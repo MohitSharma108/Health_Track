@@ -1,0 +1,46 @@
+# One command to get a real, running Nourish backend locally:
+#
+#   docker compose up
+#
+# Postgres data persists in the `pgdata` volume across restarts. Put your
+# ANTHROPIC_API_KEY in .env first (copy .env.example) — compose reads it
+# from there automatically. This runs the production image (`npm start`);
+# for live-reload development, run `npm run dev` on the host against the
+# `postgres` service instead (set DATABASE_URL to localhost:5432).
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nourish
+      POSTGRES_PASSWORD: nourish
+      POSTGRES_DB: nourish
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nourish"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://nourish:nourish@postgres:5432/nourish?schema=public
+      PORT: 4000
+    ports:
+      - "4000:4000"
+    command: sh -c "npx prisma migrate deploy && npm run seed && node src/server.js"
+
+volumes:
+  pgdata:

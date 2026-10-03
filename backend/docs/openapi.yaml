@@ -1,0 +1,605 @@
+openapi: 3.0.3
+info:
+  title: Nourish API
+  description: >
+    AI-powered nutrition & food tracking API. Every route except /health and
+    /api/auth/register|login requires a Bearer JWT and is scoped to the
+    authenticated user. Import this file directly into Postman, Insomnia, or
+    Swagger UI (swagger.io/tools/swagger-ui) to explore and call it.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:4000/api
+    description: Local dev
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, example: invalid_request }
+            message: { type: string }
+            details: { type: object, nullable: true }
+    Macros:
+      type: object
+      properties:
+        calories: { type: number }
+        proteinG: { type: number }
+        carbsG: { type: number }
+        fatG: { type: number }
+        fibreG: { type: number }
+        sugarG: { type: number }
+        satFatG: { type: number }
+        sodiumMg: { type: number }
+    MealItem:
+      type: object
+      required: [name, qty, unit, source]
+      properties:
+        foodId: { type: string, format: uuid, nullable: true, description: "If set, macros are recomputed server-side and any macro fields you send are ignored." }
+        name: { type: string }
+        qty: { type: number }
+        unit: { type: string, example: g }
+        calories: { type: number, description: "Required only when foodId is absent." }
+        proteinG: { type: number }
+        carbsG: { type: number }
+        fatG: { type: number }
+        fibreG: { type: number }
+        source: { type: string, enum: [manual, ai_image, voice, ocr, saved, ai_suggestion] }
+        confidence: { type: number, nullable: true, minimum: 0, maximum: 1 }
+    Meal:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        time: { type: string, example: "08:30" }
+        mealType: { type: string, enum: [Breakfast, "Morning snack", Lunch, "Evening snack", Dinner, Custom] }
+        source: { type: string }
+        note: { type: string, nullable: true }
+        imageAssetUrl: { type: string, nullable: true }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MealItem" }
+
+  responses:
+    Unauthorized:
+      description: Missing/invalid token
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: Not found (or not owned by the caller — existence is never leaked)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Invalid:
+      description: Failed validation
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      security: []
+      responses:
+        "200": { description: OK }
+
+  /auth/register:
+    post:
+      summary: Create an account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                name: { type: string }
+      responses:
+        "201": { description: "Created — returns { token, user }" }
+        "400": { $ref: "#/components/responses/Invalid" }
+        "409": { description: Email already in use }
+
+  /auth/login:
+    post:
+      summary: Log in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200": { description: "OK — returns { token, user }" }
+        "401": { description: Invalid credentials }
+
+  /auth/me:
+    get:
+      summary: Current user
+      responses:
+        "200": { description: OK }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      summary: Permanently delete the account and all owned data (cascades via the DB schema)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /profile:
+    get:
+      summary: Get profile + goals
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      summary: Update profile fields (partial)
+      requestBody:
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { description: OK }
+        "400": { $ref: "#/components/responses/Invalid" }
+
+  /profile/goals:
+    put:
+      summary: Set daily nutrition targets directly
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [calories, proteinG, carbsG, fatG, fibreG]
+              properties:
+                calories: { type: integer }
+                proteinG: { type: number }
+                carbsG: { type: number }
+                fatG: { type: number }
+                fibreG: { type: number }
+      responses:
+        "200": { description: OK }
+
+  /profile/goals/recalculate:
+    post:
+      summary: Recompute targets from profile (Mifflin-St Jeor) — always overridable, not medical advice
+      responses:
+        "200": { description: OK }
+        "400": { description: Profile missing age/height/weight }
+
+  /foods/search:
+    get:
+      summary: Search the food catalog (reference DB + your custom foods)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK }
+
+  /foods/{id}:
+    get:
+      summary: Get one food with nutrients + servings
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /foods/custom:
+    get:
+      summary: List every custom food you own (manual entries + saved label-scan products)
+      responses: { "200": { description: OK } }
+    post:
+      summary: Create a custom food (manual entry or a saved OCR product)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "201": { description: Created }
+
+  /meals:
+    get:
+      summary: List meals (by date, or start/end range, optional text search)
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date } }
+        - { name: start, in: query, schema: { type: string, format: date } }
+        - { name: end, in: query, schema: { type: string, format: date } }
+        - { name: q, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meals: { type: array, items: { $ref: "#/components/schemas/Meal" } }
+    post:
+      summary: Log a meal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, mealType, source, items]
+              properties:
+                date: { type: string, format: date }
+                time: { type: string }
+                mealType: { type: string }
+                source: { type: string }
+                note: { type: string }
+                imageAssetUrl: { type: string, nullable: true }
+                items: { type: array, items: { $ref: "#/components/schemas/MealItem" } }
+      responses:
+        "201": { description: Created }
+        "400": { $ref: "#/components/responses/Invalid" }
+
+  /meals/{id}:
+    get:
+      summary: Get one meal
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      summary: Update a meal (partial)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody: { content: { application/json: { schema: { type: object } } } }
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Delete a meal (soft delete)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /meals/{id}/duplicate:
+    post:
+      summary: Duplicate a meal, optionally to a different date
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { date: { type: string, format: date } } } } } }
+      responses:
+        "201": { description: Created }
+
+  /recipes:
+    get:
+      summary: List your saved recipes with computed totals
+      responses: { "200": { description: OK } }
+    post:
+      summary: Create a recipe from ingredients (each qty/unit resolved via the food catalog)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "201": { description: Created }
+
+  /recipes/{id}:
+    delete:
+      summary: Delete a recipe
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /recipes/{id}/log:
+    post:
+      summary: Log N servings of a saved recipe as a new meal
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, mealType]
+              properties:
+                servingsConsumed: { type: number, default: 1 }
+                date: { type: string, format: date }
+                mealType: { type: string }
+                time: { type: string }
+      responses:
+        "201": { description: Created }
+
+  /weight:
+    get:
+      summary: List weight logs (optional start/end range)
+      parameters:
+        - { name: start, in: query, schema: { type: string, format: date } }
+        - { name: end, in: query, schema: { type: string, format: date } }
+      responses: { "200": { description: OK } }
+    post:
+      summary: Log (or update) today's — or any date's — weight
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, weightKg]
+              properties:
+                date: { type: string, format: date }
+                weightKg: { type: number }
+                note: { type: string }
+      responses: { "201": { description: Created/updated } }
+
+  /water:
+    get:
+      summary: Get water logs + total for a date
+      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      responses: { "200": { description: OK } }
+    post:
+      summary: Log a water entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, amountMl]
+              properties:
+                date: { type: string, format: date }
+                amountMl: { type: integer }
+      responses: { "201": { description: Created } }
+
+  /favorites:
+    get:
+      summary: List favourites (foods, meals, recipes, products)
+      responses: { "200": { description: OK } }
+    post:
+      summary: Add a favourite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, refId, name]
+              properties:
+                type: { type: string, enum: [food, meal, recipe, product] }
+                refId: { type: string }
+                name: { type: string }
+                snapshot: { type: object }
+      responses: { "201": { description: Created } }
+
+  /favorites/{id}:
+    delete:
+      summary: Remove a favourite
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ai/scan:
+    post:
+      summary: AI food-photo recognition (multipart image upload)
+      description: 12MB max, JPEG/PNG/WebP/GIF. Returns detected items with portion estimates, macros, and a per-item confidence score.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image: { type: string, format: binary }
+                note: { type: string }
+      responses:
+        "200": { description: OK }
+        "503": { description: AI not configured on this server }
+
+  /ai/ocr:
+    post:
+      summary: AI nutrition-label OCR (multipart image upload)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, properties: { image: { type: string, format: binary } } }
+      responses: { "200": { description: OK } }
+
+  /ai/voice:
+    post:
+      summary: Parse a speech-to-text transcript into structured food items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [transcript], properties: { transcript: { type: string } } }
+      responses: { "200": { description: OK } }
+
+  /ai/recipe-import:
+    post:
+      summary: Parse pasted recipe text into a structured ingredient list with nutrition estimates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [text], properties: { text: { type: string } } }
+      responses: { "200": { description: OK } }
+
+  /ai/eat-now:
+    post:
+      summary: "What should I eat now? — 3 suggestions based on remaining macros + preferences"
+      responses: { "200": { description: OK } }
+
+  /ai/plan-day:
+    post:
+      summary: Generate a full day's meal plan matching goals and preferences
+      responses: { "200": { description: OK } }
+
+  /ai/regenerate-meal:
+    post:
+      summary: Regenerate one meal in a plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mealType]
+              properties: { mealType: { type: string }, avoid: { type: string } }
+      responses: { "200": { description: OK } }
+
+  /ai/daily-analysis:
+    post:
+      summary: AI analysis of one day's logged nutrition vs targets (non-diagnostic)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [date], properties: { date: { type: string, format: date } } }
+      responses:
+        "200": { description: OK }
+        "400": { description: No meals logged on that date yet }
+
+  /ai/weekly-insights:
+    post:
+      summary: AI insights grounded in a week's real logged data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [start, end]
+              properties: { start: { type: string, format: date }, end: { type: string, format: date } }
+      responses: { "200": { description: OK } }
+
+  /ai/assistant:
+    post:
+      summary: Chat with the nutrition assistant (grounded only in your real app data)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [history]
+              properties:
+                history:
+                  type: array
+                  items:
+                    type: object
+                    properties: { role: { type: string, enum: [user, assistant] }, content: { type: string } }
+      responses: { "200": { description: "OK — returns { text }" } }
+
+  /analytics/range:
+    get:
+      summary: Aggregate stats for a date range (averages, consistency, top foods, weekday/weekend split)
+      parameters:
+        - { name: start, in: query, required: true, schema: { type: string, format: date } }
+        - { name: end, in: query, required: true, schema: { type: string, format: date } }
+      responses: { "200": { description: OK } }
+
+  /analytics/day:
+    get:
+      summary: Totals + meals for a single date
+      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      responses: { "200": { description: OK } }
+
+  /notifications:
+    get:
+      summary: List notifications, newest first
+      responses: { "200": { description: OK } }
+
+  /notifications/{id}/read:
+    post:
+      summary: Mark one notification read
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: OK } }
+
+  /notifications/{id}:
+    delete:
+      summary: Delete a notification
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted } }
+
+  /notifications/read-all:
+    post:
+      summary: Mark all notifications read
+      responses: { "204": { description: OK } }
+
+  /notifications/preferences:
+    get:
+      summary: Get notification preferences
+      responses: { "200": { description: OK } }
+    put:
+      summary: Set one notification preference (type, enabled, and/or time)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, enum: [mealReminders, hydration, loggingReminder, goalProgress, dailyReport, weeklyReport] }
+                enabled: { type: boolean }
+                time: { type: string, example: "20:00" }
+      responses: { "200": { description: OK } }
+
+  /notifications/devices:
+    post:
+      summary: Register a device push token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pushToken, platform]
+              properties: { pushToken: { type: string }, platform: { type: string, enum: [ios, android, web] } }
+      responses: { "201": { description: Created } }
+
+  /reports/daily:
+    get:
+      summary: Get the daily report as JSON
+      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      responses: { "200": { description: OK } }
+
+  /reports/daily/download:
+    get:
+      summary: Download the daily report as an HTML file
+      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      responses:
+        "200":
+          description: OK
+          content: { text/html: { schema: { type: string } } }
+
+  /reports/weekly:
+    get:
+      summary: Get the weekly report as JSON (defaults to the 7 days ending today)
+      parameters: [{ name: end, in: query, schema: { type: string, format: date } }]
+      responses: { "200": { description: OK } }
+
+  /reports/weekly/download:
+    get:
+      summary: Download the weekly report as an HTML file
+      parameters: [{ name: end, in: query, schema: { type: string, format: date } }]
+      responses: { "200": { description: OK } }
+
+  /reports/daily/send:
+    post:
+      summary: Send today's (or a given date's) report by email right now
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [date], properties: { date: { type: string, format: date } } }
+      responses: { "200": { description: OK } }
+
+  /reports/history:
+    get:
+      summary: List past email-report send attempts (sent/failed/skipped)
+      responses: { "200": { description: OK } }

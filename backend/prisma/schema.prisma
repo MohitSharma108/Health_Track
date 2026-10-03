@@ -1,0 +1,324 @@
+// Nourish — Prisma schema (PostgreSQL)
+// Mirrors the schema in ARCHITECTURE.md. Run `npm run prisma:migrate` after
+// filling in DATABASE_URL to create these tables.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  profile       Profile?
+  goals         NutritionGoal?
+  meals         Meal[]
+  recipes       Recipe[]
+  customFoods   CustomFood[]
+  favorites     Favorite[]
+  weightLogs    WeightLog[]
+  waterLogs     WaterLog[]
+  notifications Notification[]
+  notifPrefs    NotificationPreference[]
+  devices       UserDevice[]
+  emailReports  EmailReport[]
+  aiRecs        AiRecommendation[]
+
+  @@map("users")
+}
+
+model Profile {
+  userId        String   @id
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  age           Int?
+  gender        String?
+  heightCm      Float?
+  weightKg      Float?
+  startWeightKg Float?
+  goalWeightKg  Float?
+  activityLevel String   @default("light")
+  goal          String   @default("maintain")
+  diet          String   @default("Non-vegetarian")
+  allergies     String[] @default([])
+  dislikes      String?
+  restrictions  String?
+  budget        String   @default("moderate")
+  cuisine       String   @default("No preference")
+  mealsPerDay   Int      @default(4)
+  units         String   @default("metric")
+  reportTime    String   @default("20:00")
+  appearance    String   @default("system")
+  aiEnabled     Boolean  @default(true)
+  waterGoalMl   Int      @default(2000)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("profiles")
+}
+
+model NutritionGoal {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calories       Int
+  proteinG       Float
+  carbsG         Float
+  fatG           Float
+  fibreG         Float
+  micronutrients Json?
+  updatedAt      DateTime @updatedAt
+
+  @@map("nutrition_goals")
+}
+
+// --- Nutrition reference data (NutritionProvider's internal store) ---
+
+model Food {
+  id          String   @id @default(uuid())
+  name        String
+  category    String   @default("Custom")
+  isCustom    Boolean  @default(false)
+  isProduct   Boolean  @default(false)
+  ownerUserId String?
+  createdAt   DateTime @default(now())
+
+  nutrients         FoodNutrient?
+  servings          FoodServing[]
+  mealItems         MealItem[]
+  recipeIngredients RecipeIngredient[]
+  customFoodOf      CustomFood[]
+
+  @@index([name])
+  @@map("foods")
+}
+
+model FoodNutrient {
+  foodId   String @id
+  food     Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  calories Float // per 100g/ml
+  proteinG Float
+  carbsG   Float
+  fatG     Float
+  fibreG   Float
+  sugarG   Float @default(0)
+  satFatG  Float @default(0)
+  sodiumMg Float @default(0)
+
+  @@map("food_nutrients")
+}
+
+model FoodServing {
+  id     String @id @default(uuid())
+  foodId String
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  qty    Float
+  unit   String
+  grams  Float
+  label  String
+
+  @@map("food_servings")
+}
+
+model CustomFood {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodId    String
+  food      Food     @relation(fields: [foodId], references: [id])
+  isProduct Boolean  @default(false) // true = came from label OCR ("My Products")
+  createdAt DateTime @default(now())
+
+  @@map("custom_foods")
+}
+
+// --- Logging ---
+
+model Meal {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime  @db.Date
+  time          String?
+  mealType      String
+  source        String // manual | ai_image | voice | ocr | saved | ai_suggestion
+  note          String?
+  imageAssetUrl String?
+  createdAt     DateTime  @default(now())
+  deletedAt     DateTime?
+
+  items        MealItem[]
+  aiPrediction AiFoodPrediction?
+
+  @@index([userId, date])
+  @@map("meals")
+}
+
+model MealItem {
+  id         String  @id @default(uuid())
+  mealId     String
+  meal       Meal    @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  foodId     String?
+  food       Food?   @relation(fields: [foodId], references: [id])
+  name       String
+  qty        Float
+  unit       String
+  calories   Float
+  proteinG   Float
+  carbsG     Float
+  fatG       Float
+  fibreG     Float
+  sugarG     Float   @default(0)
+  satFatG    Float   @default(0)
+  sodiumMg   Float   @default(0)
+  source     String
+  confidence Float?
+
+  @@map("meal_items")
+}
+
+model AiFoodPrediction {
+  id             String   @id @default(uuid())
+  mealId         String   @unique
+  meal           Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  rawModelOutput Json
+  confidence     Float?
+  createdAt      DateTime @default(now())
+
+  @@map("ai_food_predictions")
+}
+
+model Recipe {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  servings  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  ingredients RecipeIngredient[]
+
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id       String @id @default(uuid())
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  foodId   String
+  food     Food   @relation(fields: [foodId], references: [id])
+  qty      Float
+  unit     String
+
+  @@map("recipe_ingredients")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // food | meal | recipe | product
+  refId     String
+  name      String
+  snapshot  Json?
+  createdAt DateTime @default(now())
+
+  @@map("favorites")
+}
+
+model WeightLog {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date     DateTime @db.Date
+  weightKg Float
+  note     String?
+
+  @@unique([userId, date])
+  @@map("weight_logs")
+}
+
+model WaterLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  amountMl  Int
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+  @@map("water_logs")
+}
+
+// --- Notifications / reports ---
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id      String  @id @default(uuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type    String
+  enabled Boolean @default(true)
+  time    String?
+
+  @@unique([userId, type])
+  @@map("notification_preferences")
+}
+
+model EmailReport {
+  id     String    @id @default(uuid())
+  userId String
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date   DateTime  @db.Date
+  kind   String // daily | weekly
+  status String // sent | failed | skipped
+  sentAt DateTime?
+  error  String?
+
+  @@map("email_reports")
+}
+
+model UserDevice {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushToken String
+  platform  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, pushToken])
+  @@map("user_devices")
+}
+
+model AiRecommendation {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String // eat_now | plan_day | daily_analysis | weekly_insights | assistant
+  requestCtx Json
+  response   Json
+  createdAt  DateTime @default(now())
+
+  @@index([userId, kind])
+  @@map("ai_recommendations")
+}
