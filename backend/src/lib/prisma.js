@@ -4,37 +4,63 @@ const localDb = require('./localDb');
 
 const globalForPrisma = globalThis;
 
-const realPrisma =
-  globalForPrisma.__nourishPrisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-  });
+const hasValidPostgresUrl = Boolean(
+  process.env.DATABASE_URL &&
+  process.env.DATABASE_URL.startsWith('postgres') &&
+  !process.env.DATABASE_URL.includes('localhost')
+);
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.__nourishPrisma = realPrisma;
+// Lazy Prisma Client initialization so it doesn't error when DATABASE_URL is missing
+let realPrisma = null;
+if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres')) {
+  realPrisma =
+    globalForPrisma.__nourishPrisma ||
+    new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+    });
+
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.__nourishPrisma = realPrisma;
+  }
 }
 
-let pgStatus = null; // null = unknown, true = connected, false = offline
+// If no external PostgreSQL URL is configured, activate zero-config persistent local store immediately
+let pgStatus = hasValidPostgresUrl ? null : false;
+if (pgStatus === false) {
+  // eslint-disable-next-line no-console
+  console.log('[DB] No cloud PostgreSQL DATABASE_URL detected — active mode: Zero-Config Local Persistent Database (data/nourish_local.json). All logins, signups, and meals will work smoothly!');
+}
 
 function isConnectionError(err) {
   if (!err) return false;
-  if (err.code === 'P1000' || err.code === 'P1001' || err.code === 'P1017') return true;
+  if (['P1000', 'P1001', 'P1017', 'P2021', 'P2024'].includes(err.code)) return true;
   const msg = typeof err.message === 'string' ? err.message : '';
-  return msg.includes('Authentication failed') || msg.includes('Can\'t reach database server') || msg.includes('ECONNREFUSED') || msg.includes('connect ECONNREFUSED');
+  return (
+    msg.includes('Authentication failed') ||
+    msg.includes('Can\'t reach database server') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('connect ECONNREFUSED') ||
+    msg.includes('DATABASE_URL') ||
+    msg.includes('Environment variable not found') ||
+    msg.includes('does not exist in the current database') ||
+    msg.includes('PrismaClientInitializationError') ||
+    msg.includes('PrismaClientKnownRequestError')
+  );
 }
 
 // Transparent Proxy that intercepts calls to models (user, meal, profile, etc.)
 // If PostgreSQL is reachable, runs directly against Prisma Client.
-// If PostgreSQL is unreachable, transparently falls back to localDb.
-const prismaProxy = new Proxy(realPrisma, {
+// If PostgreSQL is unreachable or not configured, transparently uses localDb.
+const prismaProxy = new Proxy({}, {
   get(target, prop, receiver) {
     if (prop in localDb) {
-      const modelDelegate = target[prop];
+      const modelDelegate = (realPrisma && realPrisma[prop]) || {};
       const localModel = localDb[prop];
-      return new Proxy(modelDelegate || {}, {
+      return new Proxy(modelDelegate, {
         get(mTarget, mProp) {
           return async function (...args) {
-            if (pgStatus === false) {
+            // Fast path: if offline or no realPrisma, immediately use localDb
+            if (pgStatus === false || !realPrisma) {
               if (localModel && typeof localModel[mProp] === 'function') {
                 return await localModel[mProp](...args);
               }
@@ -53,6 +79,7 @@ const prismaProxy = new Proxy(realPrisma, {
                 const res = await mTarget[mProp](...args);
                 if (pgStatus === null) {
                   pgStatus = true;
+                  // eslint-disable-next-line no-console
                   console.log('[DB] PostgreSQL connected successfully.');
                 }
                 return res;
@@ -61,7 +88,8 @@ const prismaProxy = new Proxy(realPrisma, {
               if (isConnectionError(err)) {
                 if (pgStatus !== false) {
                   pgStatus = false;
-                  console.log('[DB] PostgreSQL is offline — active mode: Zero-Config Local Persistent Database (data/nourish_local.json). All logins, signups, and meals will work smoothly!');
+                  // eslint-disable-next-line no-console
+                  console.log('[DB] PostgreSQL offline/unreachable — switched to Zero-Config Local Persistent Database (data/nourish_local.json). All logins, signups, and meals will work smoothly!');
                 }
                 if (localModel && typeof localModel[mProp] === 'function') {
                   return await localModel[mProp](...args);
@@ -96,7 +124,10 @@ const prismaProxy = new Proxy(realPrisma, {
     if (prop === '$queryRaw') {
       return async () => [{ '?column?': 1 }];
     }
-    return Reflect.get(target, prop, receiver);
+    if (realPrisma && prop in realPrisma) {
+      return Reflect.get(realPrisma, prop, receiver);
+    }
+    return undefined;
   },
 });
 
