@@ -44,7 +44,13 @@ function createApp() {
   ];
   const frontendDir = candidates.find((d) => fs.existsSync(d) && (fs.existsSync(path.join(d, 'nourish-selfhosted.html')) || fs.existsSync(path.join(d, 'index.html')))) || path.join(__dirname, '../public');
 
-  app.use(express.static(frontendDir));
+  app.use(express.static(frontendDir, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html') || filePath.endsWith('sw.js') || filePath.endsWith('manifest.json')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    },
+  }));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/health') || req.path.startsWith('/uploads')) {
       return next();
@@ -52,6 +58,7 @@ function createApp() {
     const htmlFile = fs.existsSync(path.join(frontendDir, 'nourish-selfhosted.html'))
       ? path.join(frontendDir, 'nourish-selfhosted.html')
       : path.join(frontendDir, 'index.html');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(htmlFile);
   });
 

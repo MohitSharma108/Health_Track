@@ -27,7 +27,7 @@ router.post(
     const existing = await prisma.user.findUnique({ where: { email: rawEmail } });
     if (existing) {
       // If user exists and provides their correct password, log them in immediately!
-      const ok = await verifyPassword(password, existing.passwordHash);
+      const ok = (await verifyPassword(password, existing.passwordHash)) || (password.trim() !== password && (await verifyPassword(password.trim(), existing.passwordHash)));
       if (ok) {
         const token = signAccessToken(existing);
         return res.status(200).json({ token, user: { id: existing.id, email: existing.email }, message: 'Welcome back!' });
@@ -109,10 +109,62 @@ router.post(
       const token = signAccessToken(newUser);
       return res.status(200).json({ token, user: { id: newUser.id, email: newUser.email }, isNewUser: true });
     }
-    const ok = await verifyPassword(password, user.passwordHash);
-    if (!ok) throw new ApiError(401, 'invalid_credentials', 'Incorrect password for this email.');
+    const ok = (await verifyPassword(password, user.passwordHash)) || (password.trim() !== password && (await verifyPassword(password.trim(), user.passwordHash)));
+    if (!ok) throw new ApiError(401, 'invalid_credentials', 'Incorrect password for this email. Tap Forgot Password to reset it.');
     const token = signAccessToken(user);
     res.json({ token, user: { id: user.id, email: user.email } });
+  })
+);
+
+const resetPasswordSchema = z.object({
+  email: z.string().min(3),
+  newPassword: z.string().min(4, 'Password must be at least 4 characters.'),
+});
+
+router.post(
+  '/reset-password',
+  authLimiter,
+  validate({ body: resetPasswordSchema }),
+  asyncHandler(async (req, res) => {
+    const rawEmail = String(req.body.email || '').trim().toLowerCase();
+    const { newPassword } = req.body;
+    let user = await prisma.user.findUnique({ where: { email: rawEmail } });
+    const passwordHash = await hashPassword(newPassword);
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: rawEmail,
+          passwordHash,
+          profile: { create: { name: rawEmail.split('@')[0] || 'Friend' } },
+          goals: {
+            create: {
+              calories: 2000,
+              proteinG: 120,
+              carbsG: 220,
+              fatG: 65,
+              fibreG: 30,
+            },
+          },
+          notifPrefs: {
+            create: [
+              { type: 'mealReminders', enabled: true },
+              { type: 'hydration', enabled: true },
+              { type: 'loggingReminder', enabled: true },
+              { type: 'goalProgress', enabled: true },
+              { type: 'dailyReport', enabled: true },
+              { type: 'weeklyReport', enabled: true },
+            ],
+          },
+        },
+      });
+    } else {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      });
+    }
+    const token = signAccessToken(user);
+    res.json({ token, user: { id: user.id, email: user.email }, message: 'Password updated successfully!' });
   })
 );
 

@@ -126,6 +126,16 @@ const user = {
     saveDb(db);
     return newUser;
   },
+  async update({ where, data }) {
+    const db = loadDb();
+    const u = db.users.find(x => (where.id && x.id === where.id) || (where.email && x.email.toLowerCase() === where.email.toLowerCase()));
+    if (u) {
+      Object.assign(u, data);
+      saveDb(db);
+      return u;
+    }
+    return null;
+  },
   async delete({ where }) {
     const db = loadDb();
     const idx = db.users.findIndex(u => u.id === where.id);

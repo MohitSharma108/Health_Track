@@ -1500,7 +1500,7 @@ function render(){
     app.innerHTML = `<div class="screen" style="padding-top:80px"><div class="analyzing-pulse"><div class="pulse-ring"></div><div class="muted">Loading your nutrition data…</div></div></div>`;
     return;
   }
-  if((!getAuthToken() && isTrialExpired()) || (STATE.auth && STATE.auth.loggedOut) || STATE.showAuthModal){
+  if(!STATE.guestModeDismissed && ((!getAuthToken() && isTrialExpired()) || (STATE.auth && STATE.auth.loggedOut) || STATE.showAuthModal)){
     app.innerHTML = renderAuthScreen();
     return;
   }
@@ -4495,17 +4495,66 @@ function afterRender(){
    artifact build has no equivalent screen since the platform handles
    identity itself. Shown whenever there's no valid token.
    ============================================================ */
-function openAuthModal(mode="register"){
+function openAuthModal(mode="login"){
   STATE.showAuthModal = true;
+  STATE.guestModeDismissed = false;
   STATE.authMode = mode;
   STATE.authError = null;
+  STATE.authLoading = false;
+  STATE.sheet = null;
+  STATE.modal = null;
   render();
 }
 function dismissAuthModal(){
   STATE.showAuthModal = false;
+  STATE.guestModeDismissed = true;
   STATE.auth = {loggedOut: false};
   STATE.authError = null;
+  STATE.authLoading = false;
   render();
+}
+
+function setAuthTab(mode){
+  const emailEl = document.getElementById("auth-email");
+  const passEl = document.getElementById("auth-password");
+  const nameEl = document.getElementById("auth-name");
+  if(emailEl) (STATE.authForm = STATE.authForm || {}).email = emailEl.value;
+  if(passEl) (STATE.authForm = STATE.authForm || {}).password = passEl.value;
+  if(nameEl) (STATE.authForm = STATE.authForm || {}).name = nameEl.value;
+  STATE.authMode = mode;
+  STATE.authError = null;
+  STATE.authLoading = false;
+  render();
+}
+
+async function showForgotPasswordPrompt(){
+  const emailEl = document.getElementById("auth-email");
+  const currentEmail = (emailEl && emailEl.value) || (STATE.authForm && STATE.authForm.email) || "";
+  const targetEmail = prompt("Enter your account email address:", currentEmail);
+  if(!targetEmail) return;
+  const newPass = prompt("Enter a new password for your account (minimum 4 characters):");
+  if(!newPass || newPass.trim().length < 4){
+    toast("Password must be at least 4 characters.");
+    return;
+  }
+  try{
+    STATE.authLoading = true;
+    STATE.authError = null;
+    render();
+    const res = await apiPost("/auth/reset-password", { email: targetEmail.trim().toLowerCase(), newPassword: newPass.trim() });
+    setAuthToken(res.token);
+    STATE.auth = {loggedOut:false};
+    STATE.showAuthModal = false;
+    STATE.guestModeDismissed = true;
+    STATE.authForm = {email:"", password:"", name:""};
+    await loadEverythingAfterAuth().catch(e=>console.warn("loadEverythingAfterAuth warning:", e));
+    toast("✨ Password updated! Logged in successfully.");
+  }catch(err){
+    STATE.authError = (err && err.message) || "Could not reset password. Please check your network and try again.";
+  }finally{
+    STATE.authLoading = false;
+    render();
+  }
 }
 
 function renderAuthScreen(){
@@ -4517,31 +4566,42 @@ function renderAuthScreen(){
     ? 'Log in to access your cloud meal logs and daily goals.'
     : (expired ? '7-Day Free Pass complete! Create your account to keep your streak.' : 'Create your free account to sync your 7-day trial data to the cloud.');
 
-  return `<div class="screen" style="padding-top:6vh;text-align:center">
+  return `<div class="screen" style="padding-top:4vh;padding-bottom:30px;text-align:center;max-width:360px;margin:0 auto">
     <div style="font-size:46px;margin-bottom:6px">🥗</div>
     <h1 style="font-size:26px;margin-bottom:4px">${title}</h1>
-    <p class="muted small" style="margin-bottom:18px;max-width:320px;margin-left:auto;margin-right:auto;line-height:1.4">${subtitle}</p>
+    <p class="muted small" style="margin-bottom:18px;line-height:1.4">${subtitle}</p>
 
     <!-- Segmented Tab: Log In vs Create Account -->
-    <div class="segmented" style="max-width:320px;margin:0 auto 16px">
-      <button type="button" class="${mode==='login'?'active':''}" onclick="STATE.authMode='login'; STATE.authError=null; render()">🔐 Log In</button>
-      <button type="button" class="${mode==='register'?'active':''}" onclick="STATE.authMode='register'; STATE.authError=null; render()">✨ Create Account</button>
+    <div class="segmented" style="margin:0 auto 16px">
+      <button type="button" class="${mode==='login'?'active':''}" onclick="setAuthTab('login')">🔐 Log In</button>
+      <button type="button" class="${mode==='register'?'active':''}" onclick="setAuthTab('register')">✨ Create Account</button>
     </div>
 
-    <div class="stack" style="text-align:left;max-width:320px;margin:0 auto">
-      ${mode==='register'?`<div class="field"><label>Your Name (optional)</label><input type="text" autocomplete="name" placeholder="Enter your name" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value"></div>`:""}
-      <div class="field"><label>Email address</label><input type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value"></div>
-      <div class="field"><label>Password</label><input type="password" autocomplete="${mode==='login'?'current-password':'new-password'}" placeholder="Enter your password" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value" onkeydown="if(event.key==='Enter') submitAuth()"></div>
-      ${STATE.authError?`<div class="error-box">${esc(STATE.authError)}</div>`:""}
-      <button class="btn btn-primary btn-block" onclick="submitAuth()" ${STATE.authLoading?'disabled':''}>${STATE.authLoading?'Please wait…':(mode==='login'?'Log In & Access Data':'Create Account & Sync')}</button>
-      
-      <div style="text-align:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-        <button class="link-btn" style="font-weight:600;font-size:13px;color:var(--primary)" onclick="dismissAuthModal()">
-          ← Continue to Log Meals & History (Guest Mode)
-        </button>
+    <form id="auth-form" onsubmit="event.preventDefault(); submitAuth();" style="text-align:left;display:flex;flex-direction:column;gap:12px">
+      ${mode==='register'?`<div class="field" style="margin-bottom:0"><label for="auth-name">Your Name (optional)</label><input type="text" id="auth-name" autocomplete="name" placeholder="Enter your name" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value"></div>`:""}
+      <div class="field" style="margin-bottom:0">
+        <label for="auth-email">Email address</label>
+        <input type="email" id="auth-email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value">
       </div>
+      <div class="field" style="margin-bottom:0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <label for="auth-password">Password</label>
+          ${mode==='login'?`<button type="button" class="link-btn" style="font-size:12px;color:var(--ink-faint);text-decoration:underline;cursor:pointer" onclick="showForgotPasswordPrompt()">Forgot password?</button>`:''}
+        </div>
+        <input type="password" id="auth-password" autocomplete="${mode==='login'?'current-password':'new-password'}" placeholder="Enter your password" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value">
+      </div>
+      ${STATE.authError?`<div class="error-box" style="margin-top:4px">${esc(STATE.authError)}</div>`:""}
+      <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-block" style="cursor:pointer;pointer-events:auto;position:relative;z-index:20;margin-top:6px;padding:14px;font-size:15px;touch-action:manipulation" ${STATE.authLoading?'style="opacity:0.75"':''}>
+        ${STATE.authLoading ? '⏳ Connecting to server…' : (mode==='login' ? '🔐 Log In & Access Data' : '✨ Create Account & Sync')}
+      </button>
+    </form>
+    
+    <div style="text-align:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+      <button type="button" class="link-btn" style="font-weight:600;font-size:13px;color:var(--primary);cursor:pointer;padding:8px" onclick="dismissAuthModal()">
+        ← Continue to Log Meals & History (Guest Mode)
+      </button>
     </div>
-    ${!RUNTIME.apiUp?`<div class="error-box" style="margin-top:20px;max-width:320px;margin-left:auto;margin-right:auto">Can't reach the Nourish server at ${esc(API_BASE)}. Make sure the backend is running, then reload.</div>`:""}
+    ${!RUNTIME.apiUp?`<div class="error-box" style="margin-top:20px">Can't reach the Nourish server at ${esc(API_BASE)}. Make sure the backend is running, then reload.</div>`:""}
   </div>`;
 }
 
@@ -4590,25 +4650,61 @@ async function syncGuestDataToServer(){
 }
 
 async function submitAuth(){
-  const mode = STATE.authMode||"login"; const f = STATE.authForm;
-  const cleanEmail = (f.email||"").trim().toLowerCase();
-  if(!cleanEmail || !f.password){ STATE.authError="Please enter your email and password."; render(); return; }
-  STATE.authLoading = true; STATE.authError=null; render();
+  if(STATE.authLoading) return;
+
+  const emailEl = document.getElementById("auth-email");
+  const passEl = document.getElementById("auth-password");
+  const nameEl = document.getElementById("auth-name");
+
+  const f = STATE.authForm || (STATE.authForm = {email:"", password:"", name:""});
+  const cleanEmail = ((emailEl && emailEl.value) || f.email || "").trim().toLowerCase();
+  const cleanPassword = ((passEl && passEl.value) || f.password || "");
+  const cleanName = ((nameEl && nameEl.value) || f.name || "").trim();
+
+  f.email = cleanEmail;
+  f.password = cleanPassword;
+  if(cleanName) f.name = cleanName;
+
+  if(!cleanEmail || !cleanPassword){
+    STATE.authError = "Please enter both your email and password.";
+    render();
+    return;
+  }
+
+  STATE.authLoading = true;
+  STATE.authError = null;
+  render();
+
+  const mode = STATE.authMode || "login";
+  const body = mode === 'login'
+    ? { email: cleanEmail, password: cleanPassword }
+    : { email: cleanEmail, password: cleanPassword, name: cleanName };
+
   try{
-    const body = mode==='login' ? {email:cleanEmail, password:f.password} : {email:cleanEmail, password:f.password, name:f.name||""};
     const res = await apiPost(`/auth/${mode}`, body);
     setAuthToken(res.token);
     STATE.auth = {loggedOut:false};
     STATE.showAuthModal = false;
+    STATE.guestModeDismissed = true;
     STATE.authForm = {email:"", password:"", name:""};
+
     if(mode === 'register' || res.isNewUser){
-      await syncGuestDataToServer();
+      await syncGuestDataToServer().catch(e=>console.warn("Guest data sync warning:", e));
     }
-    await loadEverythingAfterAuth();
-    toast(res.isNewUser ? "Welcome! Account created and data synced." : "Welcome back! Logged in successfully.");
+    await loadEverythingAfterAuth().catch(e=>console.warn("loadEverythingAfterAuth warning:", e));
+    toast(res.isNewUser ? "✨ Welcome! Account created and data synced." : "👋 Welcome back! Logged in successfully.");
   }catch(e){
+    console.error("Auth error:", e);
+    if(e && (e.code === 'email_in_use' || (e.message && e.message.toLowerCase().includes('already exists')))){
+      STATE.authMode = 'login';
+      STATE.authError = "Account already exists! Please enter your password to log in.";
+    } else if(e && e.code === 'invalid_credentials'){
+      STATE.authError = "Incorrect password. Tap 'Forgot password?' above to reset it.";
+    } else {
+      STATE.authError = (e && e.message) || "Could not connect to server. Please try again.";
+    }
+  }finally{
     STATE.authLoading = false;
-    STATE.authError = (e && e.message) || "Something went wrong — please try again.";
     render();
   }
 }
