@@ -314,6 +314,112 @@ input:focus-visible, button:focus-visible, .choice:focus-visible, .chip:focus-vi
 .history-col-left{ display:flex; flex-direction:column; gap:0; }
 .history-col-right{ display:flex; flex-direction:column; gap:0; }
 .log-options-grid{ display:flex; flex-direction:column; gap:10px; }
+.log-option-btn{
+  width:100%;
+  text-align:left;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  cursor:pointer;
+  margin-bottom:0;
+  padding:14px 16px;
+  gap:12px;
+  border-radius:var(--radius-lg);
+  border:1.5px solid var(--line);
+  background:var(--card);
+  box-shadow:var(--shadow-sm);
+  transition:all .16s ease;
+}
+.log-option-btn:hover{
+  border-color:var(--coral);
+  background:var(--card-tint);
+  transform:translateY(-1px);
+}
+.log-option-btn:active{
+  transform:scale(0.99);
+}
+.log-option-title{
+  font-size:14px;
+  font-weight:600;
+  color:var(--ink);
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+.log-option-chevron{
+  width:20px;
+  height:20px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 20px;
+  color:var(--ink-faint);
+  transition:transform .16s ease, color .16s ease;
+}
+.log-option-btn:hover .log-option-chevron{
+  color:var(--coral);
+  transform:translateX(2px);
+}
+.icon-chevron, .log-option-chevron svg, .draft-bar-icon svg, .log-options-grid svg{
+  width:18px !important;
+  height:18px !important;
+  min-width:18px !important;
+  min-height:18px !important;
+  max-width:18px !important;
+  max-height:18px !important;
+  flex:0 0 18px !important;
+  display:inline-block;
+  vertical-align:middle;
+}
+.draft-bar-wrap{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:calc(var(--nav-h) + 10px);
+  display:flex;
+  justify-content:center;
+  z-index:45;
+  padding:0 16px;
+  pointer-events:none;
+}
+.draft-bar-btn{
+  pointer-events:auto;
+  width:100%;
+  max-width:448px;
+  background:var(--ink);
+  color:var(--paper);
+  border:none;
+  border-radius:var(--radius-pill);
+  padding:13px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-weight:700;
+  font-size:14px;
+  cursor:pointer;
+  box-shadow:0 8px 24px rgba(0,0,0,0.22);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.draft-bar-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 12px 28px rgba(0,0,0,0.28);
+}
+.draft-bar-btn:active{
+  transform:scale(0.98);
+}
+.draft-bar-action{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.draft-bar-icon{
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 18px;
+}
 .more-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .analytics-grid{ display:grid; grid-template-columns:1fr; gap:12px; }
 
@@ -395,12 +501,12 @@ input:focus-visible, button:focus-visible, .choice:focus-visible, .chip:focus-vi
   @keyframes modalIn{ from{opacity:0; transform:scale(0.96);} to{opacity:1; transform:none;} }
   .sheet-handle{ display:none; }
 
-  /* Draft Bar on Tablet/Desktop */
+  /* Draft Bar on Tablet */
   .draft-bar-wrap{
-    bottom:82px !important;
+    bottom:84px;
   }
-  .draft-bar-wrap button{
-    max-width:520px !important;
+  .draft-bar-btn{
+    max-width:520px;
   }
 
   /* Dual-Column Grids */
@@ -513,6 +619,13 @@ input:focus-visible, button:focus-visible, .choice:focus-visible, .chip:focus-vi
   }
   .btn:hover{
     filter:brightness(1.03);
+  }
+  /* Draft Bar on Desktop */
+  .draft-bar-wrap{
+    bottom:96px;
+  }
+  .draft-bar-btn{
+    max-width:560px;
   }
 }
 </style>
@@ -1638,7 +1751,7 @@ const ICO = {
   grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
   bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 21a2 2 0 004 0"/></svg>',
   back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
-  chevron:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+  chevron:'<svg class="icon-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>',
   close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v4"/></svg>',
   tag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 12.6l-8-8H4v8.6l8 8a2 2 0 002.8 0l5.8-5.8a2 2 0 000-2.8z"/><circle cx="8" cy="8.5" r="1"/></svg>',
@@ -2498,11 +2611,11 @@ function renderLogBrowse(recentFoods){
     <div class="chip-row">${cats.map(c=>`<span class="chip" onclick="STATE._searchQ='';STATE._browseCat='${c}';render()">${c}</span>`).join("")}</div>
     ${STATE._browseCat ? `<div class="card tight" style="margin-top:10px">${FOOD_DB.filter(f=>f.cat===STATE._browseCat).map(renderFoodResultRow).join("")}</div>` : ""}
     <div class="section-label">Other ways to log</div>
-    <div class="log-options-grid stack">
-      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="repeatYesterday()"><span>🔁 Repeat yesterday's meals</span>${ICO.chevron}</button>
-      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="goTo('recipes')"><span>📖 Log a saved recipe</span>${ICO.chevron}</button>
-      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="openSavedMealsSheet()"><span>⭐ Repeat a saved meal</span>${ICO.chevron}</button>
-      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="openCustomFoodSheet()"><span>➕ Add a custom food</span>${ICO.chevron}</button>
+    <div class="log-options-grid">
+      <button class="card tight log-option-btn" onclick="repeatYesterday()"><span class="log-option-title">🔁 Repeat yesterday's meals</span><span class="log-option-chevron">${ICO.chevron}</span></button>
+      <button class="card tight log-option-btn" onclick="goTo('recipes')"><span class="log-option-title">📖 Log a saved recipe</span><span class="log-option-chevron">${ICO.chevron}</span></button>
+      <button class="card tight log-option-btn" onclick="openSavedMealsSheet()"><span class="log-option-title">⭐ Repeat a saved meal</span><span class="log-option-chevron">${ICO.chevron}</span></button>
+      <button class="card tight log-option-btn" onclick="openCustomFoodSheet()"><span class="log-option-title">➕ Add a custom food</span><span class="log-option-chevron">${ICO.chevron}</span></button>
     </div>`;
 }
 async function repeatYesterday(){
@@ -2524,10 +2637,10 @@ function renderDraftBar(){
   const draft = ensureDraft();
   const items = draft.items || [];
   const t = sumMacros(items.map(i=>i.macros));
-  return `<div class="draft-bar-wrap" style="position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + 8px);display:flex;justify-content:center;z-index:45;padding:0 16px">
-    <button onclick="openReviewDraftSheet()" style="width:100%;max-width:448px;background:var(--ink);color:var(--paper);border:none;border-radius:var(--radius-pill);padding:13px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:700;cursor:pointer;box-shadow:var(--shadow-md)">
+  return `<div class="draft-bar-wrap">
+    <button class="draft-bar-btn" onclick="openReviewDraftSheet()">
       <span>${items.length} item${items.length>1?'s':''} · ${Math.round(t.cal)} kcal</span>
-      <span>Review & save ${ICO.chevron}</span>
+      <span class="draft-bar-action">Review & save <span class="draft-bar-icon">${ICO.chevron}</span></span>
     </button>
   </div>`;
 }

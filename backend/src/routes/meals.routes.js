@@ -56,6 +56,10 @@ async function resolveItems(items) {
         }
       } catch (_) {}
     }
+    // When no foodId and no macros are supplied at all, reject as invalid
+    if (!it.foodId && it.calories == null && it.proteinG == null && it.carbsG == null && it.fatG == null) {
+      throw new ApiError(400, 'invalid_item', `Item "${it.name}" is missing nutrition macros (no foodId to compute it from).`);
+    }
     // Fall back to caller's numbers or 0
     const required = ['calories', 'proteinG', 'carbsG', 'fatG', 'fibreG'];
     for (const f of required) {
