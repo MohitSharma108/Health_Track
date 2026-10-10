@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Nourish — AI Nutrition Tracker</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2e7d32">
@@ -227,7 +230,7 @@ a{ color:inherit; }
 
 /* misc */
 .divider{ height:1px; background:var(--line); margin:14px 0; }
-.link-btn{ background:none; border:none; color:var(--coral); font-weight:700; font-size:13.5px; cursor:pointer; padding:0; }
+.link-btn{ background:none; border:none; color:var(--coral); font-weight:700; font-size:13.5px; cursor:pointer; padding:8px 12px; min-height:42px; display:inline-flex; align-items:center; justify-content:center; touch-action:manipulation; user-select:none; -webkit-tap-highlight-color:rgba(229,87,63,0.15); }
 .kv{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
 .kv:last-child{ border-bottom:none; }
 .kv .k{ color:var(--ink-faint); }
@@ -270,6 +273,21 @@ input:focus-visible, button:focus-visible, .choice:focus-visible, .chip:focus-vi
 <div id="toast-host"></div>
 <script>
 "use strict";
+window.mode = "login";
+async function forceAppRefresh(){
+  try{
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for(const r of regs) await r.unregister();
+    }
+    if('caches' in window){
+      const keys = await caches.keys();
+      for(const k of keys) await caches.delete(k);
+    }
+  }catch(e){}
+  window.location.reload(true);
+}
+window.forceAppRefresh = forceAppRefresh;
 /* Point this at your running backend if it's not on localhost:4000 — e.g.
    window.NOURISH_API_BASE = "https://api.yourdomain.com/api"; (set this
    from a separate inline <script> tag placed BEFORE this one, or just edit
@@ -4597,9 +4615,14 @@ function renderAuthScreen(){
     </form>
     
     <div style="text-align:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
-      <button type="button" class="link-btn" style="font-weight:600;font-size:13px;color:var(--primary);cursor:pointer;padding:8px" onclick="dismissAuthModal()">
+      <button type="button" class="link-btn" style="font-weight:600;font-size:13.5px;color:var(--primary);cursor:pointer;padding:10px" onclick="dismissAuthModal()">
         ← Continue to Log Meals & History (Guest Mode)
       </button>
+      <div style="margin-top:8px">
+        <button type="button" class="link-btn" style="font-size:12px;color:var(--ink-faint);cursor:pointer;padding:6px;text-decoration:underline" onclick="forceAppRefresh()">
+          🔄 Clear App Cache & Force Refresh
+        </button>
+      </div>
     </div>
     ${!RUNTIME.apiUp?`<div class="error-box" style="margin-top:20px">Can't reach the Nourish server at ${esc(API_BASE)}. Make sure the backend is running, then reload.</div>`:""}
   </div>`;
