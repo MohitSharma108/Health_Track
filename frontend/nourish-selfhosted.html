@@ -139,11 +139,13 @@ a{ color:inherit; }
 .tabbar-inner{ width:100%; max-width:480px; background:var(--card); border-top:1px solid var(--line); display:flex; align-items:center; padding:8px 6px calc(env(safe-area-inset-bottom,0) + 8px); box-shadow:0 -6px 20px rgba(0,0,0,.05); }
 .tab{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--ink-faint); font-size:10.5px; font-weight:600; cursor:pointer; padding:4px 2px; }
 .tab svg{ width:21px; height:21px; }
+.tab .tab-label{ font-size:10.5px; font-weight:600; }
 .tab.active{ color:var(--coral); }
 .tab-scan{ margin-top:-26px; }
 .tab-scan .scan-circle{ width:52px; height:52px; border-radius:50%; background:var(--coral); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(229,87,63,.45); }
 .tab-scan .scan-circle svg{ width:24px; height:24px; }
 .tab-scan.active .scan-circle{ background:var(--coral-dark); }
+.tab-scan .tab-label{ display:none; }
 
 /* Ring */
 .ring-wrap{ position:relative; width:172px; height:172px; margin:4px auto 6px; }
@@ -265,6 +267,216 @@ input:focus-visible, button:focus-visible, .choice:focus-visible, .chip:focus-vi
   animation: scanline 2.2s ease-in-out infinite;
   z-index: 10;
   pointer-events: none;
+}
+/* Responsive Base Layout Helpers */
+.screen-narrow{ max-width:100%; margin:0 auto; }
+.home-responsive-grid{ display:flex; flex-direction:column; gap:0; }
+.home-col-left{ display:flex; flex-direction:column; gap:0; }
+.home-col-right{ display:flex; flex-direction:column; gap:0; }
+.history-responsive-grid{ display:flex; flex-direction:column; gap:0; }
+.history-col-left{ display:flex; flex-direction:column; gap:0; }
+.history-col-right{ display:flex; flex-direction:column; gap:0; }
+.log-options-grid{ display:flex; flex-direction:column; gap:10px; }
+.more-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.analytics-grid{ display:grid; grid-template-columns:1fr; gap:12px; }
+
+/* TABLET BREAKPOINT (768px - 1023px) */
+@media (min-width: 768px){
+  #app{ max-width:840px; padding-bottom:96px; }
+  .screen{ padding:0 20px 16px; }
+  .screen-narrow{ max-width:620px; margin:0 auto; }
+  .onb-progress{ max-width:620px; margin:0 auto; }
+
+  /* Floating Dock */
+  .tabbar{ bottom:16px; padding:0 16px; }
+  .tabbar-inner{
+    max-width:560px;
+    border-radius:var(--radius-pill);
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.92);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    box-shadow:0 10px 30px rgba(0,0,0,0.1);
+    padding:6px 12px;
+    gap:6px;
+  }
+  @media (prefers-color-scheme: dark){
+    .tabbar-inner{
+      background:rgba(33,29,26,0.92);
+      border-color:rgba(255,255,255,0.1);
+      box-shadow:0 10px 30px rgba(0,0,0,0.35);
+    }
+  }
+  .tab{
+    flex-direction:row;
+    gap:6px;
+    font-size:12.5px;
+    font-weight:700;
+    padding:7px 12px;
+    border-radius:var(--radius-pill);
+    transition:all .18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .tab:hover{
+    background:var(--card-tint);
+    color:var(--ink);
+  }
+  .tab.active{
+    background:var(--coral-soft);
+    color:var(--coral-dark);
+  }
+  .tab-scan{ margin-top:0; }
+  .tab-scan .scan-circle{
+    width:36px;
+    height:36px;
+    box-shadow:0 3px 10px rgba(229,87,63,.3);
+  }
+  .tab-scan .scan-circle svg{
+    width:18px;
+    height:18px;
+  }
+  .tab-scan .tab-label{
+    display:inline;
+    font-weight:700;
+  }
+
+  /* Centered Sheet Dialogs on Tablet/Desktop */
+  .sheet-backdrop{
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+  }
+  .sheet{
+    border-radius:24px;
+    max-width:580px;
+    max-height:85vh;
+    box-shadow:0 20px 60px rgba(0,0,0,0.22);
+    animation:modalIn .2s ease;
+    padding:22px;
+  }
+  @keyframes modalIn{ from{opacity:0; transform:scale(0.96);} to{opacity:1; transform:none;} }
+  .sheet-handle{ display:none; }
+
+  /* Draft Bar on Tablet/Desktop */
+  .draft-bar-wrap{
+    bottom:82px !important;
+  }
+  .draft-bar-wrap button{
+    max-width:520px !important;
+  }
+
+  /* Dual-Column Grids */
+  .home-responsive-grid{
+    display:grid;
+    grid-template-columns:330px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+  .home-col-left{
+    gap:12px;
+  }
+  .home-col-right{
+    min-width:0;
+  }
+
+  .history-responsive-grid{
+    display:grid;
+    grid-template-columns:330px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+  .history-col-left{
+    gap:12px;
+  }
+  .history-col-right{
+    min-width:0;
+  }
+
+  .log-options-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+
+  .more-grid{
+    grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+    gap:12px;
+  }
+
+  .analytics-grid{
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  .analytics-grid .col-span-full{
+    grid-column:1 / -1;
+  }
+}
+
+/* PC / LARGE DESKTOP BREAKPOINT (>= 1024px) */
+@media (min-width: 1024px){
+  #app{
+    max-width:1120px;
+    padding-bottom:110px;
+  }
+  .topbar{
+    padding:22px 28px 18px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:14px;
+  }
+  .screen{
+    padding:0 28px 24px;
+  }
+
+  /* Desktop Floating Dock */
+  .tabbar{
+    bottom:24px;
+  }
+  .tabbar-inner{
+    max-width:620px;
+    padding:8px 16px;
+    gap:8px;
+    box-shadow:0 16px 45px rgba(0,0,0,0.12);
+  }
+  .tab{
+    padding:9px 18px;
+    font-size:13.5px;
+  }
+
+  /* Sticky Summary Columns on Desktop */
+  .home-responsive-grid{
+    grid-template-columns:390px 1fr;
+    gap:28px;
+  }
+  .home-col-left{
+    position:sticky;
+    top:20px;
+  }
+
+  .history-responsive-grid{
+    grid-template-columns:380px 1fr;
+    gap:28px;
+  }
+  .history-col-left{
+    position:sticky;
+    top:20px;
+  }
+
+  .sheet{
+    max-width:620px;
+    padding:26px;
+  }
+
+  /* Interactive Hover Elevations for Desktop */
+  .card.tight:hover, .card[onclick]:hover{
+    box-shadow:var(--shadow-md);
+    border-color:rgba(0,0,0,0.14);
+    transform:translateY(-1px);
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .btn:hover{
+    filter:brightness(1.03);
+  }
 }
 </style>
 </head>
@@ -1415,9 +1627,9 @@ function renderTabbar(){
   return `<div class="tabbar"><div class="tabbar-inner">
     ${PRIMARY_TABS.map(t=>{
       if(t.id==="scan"){
-        return `<button class="tab tab-scan ${active==='scan'?'active':''}" onclick="goTo('scan')" aria-label="Scan food"><span class="scan-circle">${ICO.camera}</span></button>`;
+        return `<button class="tab tab-scan ${active==='scan'?'active':''}" onclick="goTo('scan')" aria-label="Scan food"><span class="scan-circle">${ICO.camera}</span><span class="tab-label">Scan</span></button>`;
       }
-      return `<button class="tab ${active===t.id?'active':''}" onclick="goTo('${t.id}')">${ICO[t.icon]}<span>${t.label}</span></button>`;
+      return `<button class="tab ${active===t.id?'active':''}" onclick="goTo('${t.id}')">${ICO[t.icon]}<span class="tab-label">${t.label}</span></button>`;
     }).join("")}
   </div></div>`;
 }
@@ -1493,9 +1705,9 @@ function renderRoute(){
 
 function renderMore(){
   return `<div class="screen">
-    <div class="choice-grid" style="grid-template-columns:1fr 1fr">
+    <div class="more-grid">
       ${MORE_TILES.map(t=>`
-        <button class="card tight" style="text-align:left;cursor:pointer;border:1px solid var(--line)" onclick="goTo('${t.id}')">
+        <button class="card tight" style="text-align:left;cursor:pointer;border:1px solid var(--line);margin-bottom:0" onclick="goTo('${t.id}')">
           <div style="width:34px;height:34px;border-radius:10px;background:var(--card-tint);display:flex;align-items:center;justify-content:center;margin-bottom:8px;color:var(--coral)">${ICO[t.icon]}</div>
           <div style="font-weight:700;font-size:14px">${t.label}</div>
           <div class="muted small" style="margin-top:2px">${t.desc}</div>
@@ -1700,7 +1912,7 @@ function renderOnboarding(){
       </div>`;
   }
   return `<div class="onb-progress">${Array.from({length:totalSteps}).map((_,i)=>`<div class="${i<step?'done':''}"></div>`).join("")}</div>
-    <div class="screen" style="padding-top:12px">
+    <div class="screen screen-narrow" style="padding-top:12px">
       <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
         <button type="button" class="link-btn" style="font-size:12.5px;color:var(--ink-faint);padding:4px 8px;min-height:32px" onclick="openAuthModal('login')">
           Already have an account? <span style="color:var(--coral);font-weight:700;margin-left:4px">Log In</span>
@@ -1912,76 +2124,82 @@ function renderHome(){
       </div>
     ` : ''}
     ${renderDateBar()}
-    <div class="card" style="text-align:center">
-      <div class="ring-wrap">
-        ${svgRing(calPct,"--coral")}
-        <div class="ring-center">
-          <div class="ring-num">${Math.round(totals.cal)}</div>
-          <div class="ring-label">of ${t.calories} kcal</div>
+    <div class="home-responsive-grid">
+      <div class="home-col-left">
+        <div class="card" style="text-align:center">
+          <div class="ring-wrap">
+            ${svgRing(calPct,"--coral")}
+            <div class="ring-center">
+              <div class="ring-num">${Math.round(totals.cal)}</div>
+              <div class="ring-label">of ${t.calories} kcal</div>
+            </div>
+          </div>
+          <div class="muted small">${remaining>0?`${remaining} kcal remaining`:"Daily target reached"}</div>
+          <div class="divider"></div>
+          <div class="stack" style="text-align:left">
+            ${macroRow("Protein","--protein",totals.p,t.protein)}
+            ${macroRow("Carbohydrates","--carbs",totals.c,t.carbs)}
+            ${macroRow("Fat","--fat",totals.fat,t.fat)}
+            ${macroRow("Fibre","--fibre",totals.fib,t.fibre)}
+          </div>
         </div>
+
+        <div class="choice-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:12px">
+          <div class="card tight" style="text-align:center;padding:10px 4px">
+            <div style="font-weight:800;font-size:17px">${STATE.todaysMeals.length}</div>
+            <div class="muted small">meals</div>
+          </div>
+          <button class="card tight" style="text-align:center;padding:10px 4px;cursor:pointer" onclick="openShareCardSheet()" title="Share streak card">
+            <div style="font-weight:800;font-size:17px;color:var(--coral)">${computeLoggingStreak()}🔥</div>
+            <div class="muted small">streak · share</div>
+          </button>
+          <button class="card tight" style="text-align:center;padding:10px 4px;cursor:pointer" onclick="logWater(250)">
+            <div style="font-weight:800;font-size:17px;color:var(--fat)">${(water/1000).toFixed(1)}L</div>
+            <div class="muted small">+250ml</div>
+          </button>
+          <button class="card tight" style="text-align:center;padding:10px 4px;cursor:pointer" onclick="goTo('weight')">
+            <div style="font-weight:800;font-size:17px">${latestWeight?round1(latestWeight)+"kg":"—"}</div>
+            <div class="muted small">${weightChange===0?"no change":(weightChange>0?"+":"")+weightChange+"kg"}</div>
+          </button>
+        </div>
+
+        <!-- 1-Tap Quick Action Hub: Log & History -->
+        <div class="choice-grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <button class="btn btn-primary" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-radius:var(--radius-md);box-shadow:0 3px 10px rgba(229,87,63,0.22);font-weight:700" onclick="goTo('log')">
+            <span style="font-size:18px">➕</span>
+            <span>Log Food</span>
+          </button>
+          <button class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-radius:var(--radius-md);background:var(--card);font-weight:700" onclick="goTo('meals')">
+            <span style="font-size:18px">📜</span>
+            <span>Meal History</span>
+          </button>
+        </div>
+
+        ${renderMicroNutrientInsights(totals)}
       </div>
-      <div class="muted small">${remaining>0?`${remaining} kcal remaining`:"Daily target reached"}</div>
-      <div class="divider"></div>
-      <div class="stack" style="text-align:left">
-        ${macroRow("Protein","--protein",totals.p,t.protein)}
-        ${macroRow("Carbohydrates","--carbs",totals.c,t.carbs)}
-        ${macroRow("Fat","--fat",totals.fat,t.fat)}
-        ${macroRow("Fibre","--fibre",totals.fib,t.fibre)}
+
+      <div class="home-col-right">
+        <button class="card" style="width:100%;text-align:left;display:flex;align-items:center;gap:14px;cursor:pointer;border-color:var(--coral);margin-bottom:12px" onclick="openWhatToEat()">
+          <div style="width:42px;height:42px;border-radius:50%;background:var(--coral-soft);display:flex;align-items:center;justify-content:center;color:var(--coral-dark);flex:none">${ICO.sparkle}</div>
+          <div><div style="font-weight:800;font-size:15px">What should I eat now?</div><div class="muted small">AI picks options that fit your remaining macros</div></div>
+        </button>
+
+        <div class="section-label" style="display:flex;justify-content:space-between;align-items:center;margin-top:0">
+          <span>${prettyDate(STATE.selectedDate)}'s meals</span>
+          <div style="display:flex;gap:8px">
+            <button class="link-btn" style="color:var(--coral)" onclick="openQuickAddSheet()">⚡ Quick add</button>
+            <button class="link-btn" onclick="goTo('log')">+ Add food</button>
+          </div>
+        </div>
+        ${renderMealsList(STATE.todaysMeals)}
+
+        <div class="card" style="margin-top:14px">
+          <div class="row"><h3 style="margin:0">AI daily analysis</h3>${ICO.sparkle}</div>
+          ${renderDailyAnalysisBlock()}
+        </div>
+        <div class="disclaimer">Estimates only — not medical advice. Nourish never diagnoses conditions.</div>
       </div>
     </div>
-
-    <div class="choice-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:12px">
-      <div class="card tight" style="text-align:center;padding:10px 4px">
-        <div style="font-weight:800;font-size:17px">${STATE.todaysMeals.length}</div>
-        <div class="muted small">meals</div>
-      </div>
-      <button class="card tight" style="text-align:center;padding:10px 4px;cursor:pointer" onclick="openShareCardSheet()" title="Share streak card">
-        <div style="font-weight:800;font-size:17px;color:var(--coral)">${computeLoggingStreak()}🔥</div>
-        <div class="muted small">streak · share</div>
-      </button>
-      <button class="card tight" style="text-align:center;padding:10px 4px;cursor:pointer" onclick="logWater(250)">
-        <div style="font-weight:800;font-size:17px;color:var(--fat)">${(water/1000).toFixed(1)}L</div>
-        <div class="muted small">+250ml</div>
-      </button>
-      <button class="card tight" style="text-align:center;padding:10px 4px;cursor:pointer" onclick="goTo('weight')">
-        <div style="font-weight:800;font-size:17px">${latestWeight?round1(latestWeight)+"kg":"—"}</div>
-        <div class="muted small">${weightChange===0?"no change":(weightChange>0?"+":"")+weightChange+"kg"}</div>
-      </button>
-    </div>
-
-    <!-- 1-Tap Quick Action Hub: Log & History -->
-    <div class="choice-grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <button class="btn btn-primary" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-radius:var(--radius-md);box-shadow:0 3px 10px rgba(229,87,63,0.22);font-weight:700" onclick="goTo('log')">
-        <span style="font-size:18px">➕</span>
-        <span>Log Food</span>
-      </button>
-      <button class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-radius:var(--radius-md);background:var(--card);font-weight:700" onclick="goTo('meals')">
-        <span style="font-size:18px">📜</span>
-        <span>Meal History</span>
-      </button>
-    </div>
-
-    ${renderMicroNutrientInsights(totals)}
-
-    <button class="card" style="width:100%;text-align:left;display:flex;align-items:center;gap:14px;cursor:pointer;border-color:var(--coral)" onclick="openWhatToEat()">
-      <div style="width:42px;height:42px;border-radius:50%;background:var(--coral-soft);display:flex;align-items:center;justify-content:center;color:var(--coral-dark);flex:none">${ICO.sparkle}</div>
-      <div><div style="font-weight:800;font-size:15px">What should I eat now?</div><div class="muted small">AI picks options that fit your remaining macros</div></div>
-    </button>
-
-    <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
-      <span>${prettyDate(STATE.selectedDate)}'s meals</span>
-      <div style="display:flex;gap:8px">
-        <button class="link-btn" style="color:var(--coral)" onclick="openQuickAddSheet()">⚡ Quick add</button>
-        <button class="link-btn" onclick="goTo('log')">+ Add food</button>
-      </div>
-    </div>
-    ${renderMealsList(STATE.todaysMeals)}
-
-    <div class="card">
-      <div class="row"><h3 style="margin:0">AI daily analysis</h3>${ICO.sparkle}</div>
-      ${renderDailyAnalysisBlock()}
-    </div>
-    <div class="disclaimer">Estimates only — not medical advice. Nourish never diagnoses conditions.</div>
   </div>`;
 }
 
@@ -2212,11 +2430,11 @@ function renderLogBrowse(recentFoods){
     <div class="chip-row">${cats.map(c=>`<span class="chip" onclick="STATE._searchQ='';STATE._browseCat='${c}';render()">${c}</span>`).join("")}</div>
     ${STATE._browseCat ? `<div class="card tight" style="margin-top:10px">${FOOD_DB.filter(f=>f.cat===STATE._browseCat).map(renderFoodResultRow).join("")}</div>` : ""}
     <div class="section-label">Other ways to log</div>
-    <div class="stack">
-      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="repeatYesterday()"><span>🔁 Repeat yesterday's meals</span>${ICO.chevron}</button>
-      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="goTo('recipes')"><span>📖 Log a saved recipe</span>${ICO.chevron}</button>
-      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openSavedMealsSheet()"><span>⭐ Repeat a saved meal</span>${ICO.chevron}</button>
-      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openCustomFoodSheet()"><span>➕ Add a custom food</span>${ICO.chevron}</button>
+    <div class="log-options-grid stack">
+      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="repeatYesterday()"><span>🔁 Repeat yesterday's meals</span>${ICO.chevron}</button>
+      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="goTo('recipes')"><span>📖 Log a saved recipe</span>${ICO.chevron}</button>
+      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="openSavedMealsSheet()"><span>⭐ Repeat a saved meal</span>${ICO.chevron}</button>
+      <button class="card tight" style="text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="openCustomFoodSheet()"><span>➕ Add a custom food</span>${ICO.chevron}</button>
     </div>`;
 }
 async function repeatYesterday(){
@@ -2238,7 +2456,7 @@ function renderDraftBar(){
   const draft = ensureDraft();
   const items = draft.items || [];
   const t = sumMacros(items.map(i=>i.macros));
-  return `<div style="position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + 8px);display:flex;justify-content:center;z-index:45;padding:0 16px">
+  return `<div class="draft-bar-wrap" style="position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + 8px);display:flex;justify-content:center;z-index:45;padding:0 16px">
     <button onclick="openReviewDraftSheet()" style="width:100%;max-width:448px;background:var(--ink);color:var(--paper);border:none;border-radius:var(--radius-pill);padding:13px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:700;cursor:pointer;box-shadow:var(--shadow-md)">
       <span>${items.length} item${items.length>1?'s':''} · ${Math.round(t.cal)} kcal</span>
       <span>Review & save ${ICO.chevron}</span>
@@ -2736,7 +2954,7 @@ function renderScan(){
       <div class="field" style="margin-top:14px"><label>Add to</label><div class="chip-row">${MEAL_TYPES.map(mt=>`<span class="chip ${s.mealType===mt?'active':''}" onclick="STATE.scan.mealType='${mt}'; render()">${MEAL_ICON[mt]} ${mt}</span>`).join("")}</div></div>
       <button class="btn btn-primary btn-block" style="margin-top:8px" onclick="saveScanMeal()" ${!s.items.length?'disabled':''}>Add to ${esc(s.mealType)}</button>`;
   }
-  return `<div class="screen" style="padding-top:2px">${inner}</div>`;
+  return `<div class="screen screen-narrow" style="padding-top:2px">${inner}</div>`;
 }
 
 function renderScanItemRow(it, idx){
@@ -3082,105 +3300,111 @@ function renderMealsHistory(){
   const pct = Math.min(100, Math.round((dayT.cal / calGoal) * 100));
 
   return `<div class="screen">
-    <!-- Date Navigator -->
-    <div class="card tight" style="margin-bottom:12px;background:var(--card)">
-      <div class="row" style="gap:8px;align-items:center">
-        <button class="icon-btn" onclick="STATE.selectedDate=addDays(STATE.selectedDate,-1); loadMealsForDate(STATE.selectedDate).then(render)" title="Previous day">${ICO.back}</button>
-        <div style="flex:1;text-align:center">
-          <input type="date" value="${STATE.selectedDate}" style="border:none;background:transparent;font-weight:700;font-size:15px;color:var(--ink);cursor:pointer;text-align:center" onchange="STATE.selectedDate=this.value; loadMealsForDate(STATE.selectedDate).then(render)">
-          <div class="muted small" style="font-size:12px">${prettyDate(STATE.selectedDate)}${isToday ? ' (Today)' : ''}</div>
-        </div>
-        <button class="icon-btn" onclick="STATE.selectedDate=addDays(STATE.selectedDate,1); loadMealsForDate(STATE.selectedDate).then(render)" style="transform:scaleX(-1)" title="Next day">${ICO.back}</button>
-      </div>
-      ${!isToday ? `<div style="text-align:center;margin-top:6px"><button class="pill" style="font-size:11px;padding:3px 10px;cursor:pointer;background:var(--card-tint);color:var(--primary)" onclick="STATE.selectedDate=todayStr(); loadMealsForDate(STATE.selectedDate).then(render)">📅 Jump to Today</button></div>` : ''}
-    </div>
-
-    <!-- Selected Day Calories & Macro Summary Card -->
-    <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg, rgba(232,93,74,0.06), rgba(46,125,50,0.06));border:1px solid var(--line)">
-      <div class="row" style="margin-bottom:6px">
-        <div>
-          <span class="muted small">Intake for ${prettyDate(STATE.selectedDate)}</span>
-          <div style="font-size:22px;font-weight:800;color:var(--ink)">${Math.round(dayT.cal)} <span style="font-size:14px;font-weight:500;color:var(--ink-faint)">/ ${calGoal} kcal</span></div>
-        </div>
-        <span class="pill" style="font-weight:700;background:${pct>105?'rgba(232,93,74,0.15)':'rgba(46,125,50,0.15)'};color:${pct>105?'var(--coral)':'var(--primary)'}">
-          ${pct}% of goal
-        </span>
-      </div>
-      <div class="progress" style="height:6px;margin:8px 0 12px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden">
-        <div style="height:100%;width:${pct}%;background:${pct>105?'var(--coral)':'var(--primary)'};transition:width 0.3s"></div>
-      </div>
-      <div class="row" style="gap:6px;flex-wrap:wrap">
-        <span class="chip" style="font-size:11.5px;padding:4px 8px">🥩 <b>${round1(dayT.p)}g</b> P</span>
-        <span class="chip" style="font-size:11.5px;padding:4px 8px">🍚 <b>${round1(dayT.c)}g</b> C</span>
-        <span class="chip" style="font-size:11.5px;padding:4px 8px">🥑 <b>${round1(dayT.fat)}g</b> F</span>
-        <span class="chip" style="font-size:11.5px;padding:4px 8px">🥦 <b>${round1(dayT.fib)}g</b> Fib</span>
-      </div>
-      <div class="row" style="gap:8px;margin-top:12px">
-        <button class="btn btn-primary btn-sm" style="flex:1" onclick="goTo('log')">+ Add to this day</button>
-        <button class="btn btn-outline btn-sm" onclick="openQuickAddSheet()">⚡ Quick add</button>
-      </div>
-    </div>
-
-    <!-- Meals for Selected Date -->
-    <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
-      <span>Meals Logged (${STATE.todaysMeals.length})</span>
-    </div>
-    ${STATE.todaysMeals.length ? `
-      <div class="card tight" style="margin-bottom:16px">
-        ${STATE.todaysMeals.map(m=>renderMealListItem(m)).join("")}
-      </div>
-    ` : `
-      <div class="card empty-state" style="padding:18px 12px;margin-bottom:16px">
-        <div class="icon" style="font-size:24px">🍽️</div>
-        <p class="small muted" style="margin:4px 0 10px">No meals logged on ${prettyDate(STATE.selectedDate)}</p>
-        <button class="btn btn-outline btn-sm" onclick="goTo('log')">+ Log a meal</button>
-      </div>
-    `}
-
-    <!-- History Search & Past Dates Timeline -->
-    <div class="section-label" style="margin-top:16px">All History & Past Days</div>
-    <div class="field" style="margin-bottom:12px">
-      <div style="position:relative">
-        <input type="text" placeholder="Search past foods, meals or dates…" value="${esc(q)}" oninput="STATE._historyQ=this.value; render()" style="padding-left:36px">
-        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint)">${ICO.search}</span>
-      </div>
-    </div>
-
-    ${dates.length ? dates.map(d=>{
-      const dayMeals = byDate[d] || [];
-      const dTotals = dayTotals(dayMeals);
-      const isSelected = d === STATE.selectedDate;
-      return `
-      <div class="card tight" style="margin-bottom:10px;cursor:pointer;border-left:4px solid ${isSelected?'var(--primary)':'var(--line)'}" onclick="STATE.selectedDate='${d}'; loadMealsForDate('${d}').then(render)">
-        <div class="row" style="margin-bottom:4px">
-          <div>
-            <b style="font-size:14px">${prettyDate(d)}</b>
-            ${d===todayStr()?' <span class="badge badge-source">Today</span>':''}
+    <div class="history-responsive-grid">
+      <div class="history-col-left">
+        <!-- Date Navigator -->
+        <div class="card tight" style="margin-bottom:12px;background:var(--card)">
+          <div class="row" style="gap:8px;align-items:center">
+            <button class="icon-btn" onclick="STATE.selectedDate=addDays(STATE.selectedDate,-1); loadMealsForDate(STATE.selectedDate).then(render)" title="Previous day">${ICO.back}</button>
+            <div style="flex:1;text-align:center">
+              <input type="date" value="${STATE.selectedDate}" style="border:none;background:transparent;font-weight:700;font-size:15px;color:var(--ink);cursor:pointer;text-align:center" onchange="STATE.selectedDate=this.value; loadMealsForDate(STATE.selectedDate).then(render)">
+              <div class="muted small" style="font-size:12px">${prettyDate(STATE.selectedDate)}${isToday ? ' (Today)' : ''}</div>
+            </div>
+            <button class="icon-btn" onclick="STATE.selectedDate=addDays(STATE.selectedDate,1); loadMealsForDate(STATE.selectedDate).then(render)" style="transform:scaleX(-1)" title="Next day">${ICO.back}</button>
           </div>
-          <b class="small" style="color:var(--coral)">${Math.round(dTotals.cal)} kcal</b>
+          ${!isToday ? `<div style="text-align:center;margin-top:6px"><button class="pill" style="font-size:11px;padding:3px 10px;cursor:pointer;background:var(--card-tint);color:var(--primary)" onclick="STATE.selectedDate=todayStr(); loadMealsForDate(STATE.selectedDate).then(render)">📅 Jump to Today</button></div>` : ''}
         </div>
-        <div class="muted small" style="margin-bottom:6px">
-          ${dayMeals.map(m=>`${m.mealType} (${(m.items||[]).map(i=>i.name).slice(0,3).join(", ")})`).join(" · ")}
-        </div>
-        <div class="row" style="font-size:11.5px;color:var(--ink-faint);gap:8px">
-          <span>🥩 ${round1(dTotals.p)}g</span>
-          <span>🍚 ${round1(dTotals.c)}g</span>
-          <span>🥑 ${round1(dTotals.fat)}g</span>
-          <span>🥦 ${round1(dTotals.fib)}g</span>
-          <span style="margin-left:auto;color:var(--primary);font-weight:600">View Day →</span>
-        </div>
-      </div>`;
-    }).join("") : `
-      <div class="card empty-state" style="padding:28px 16px">
-        <div class="icon">📅</div>
-        <h4>No history logged yet</h4>
-        <p class="small muted">Once you track meals, your complete nutrition history will show up here.</p>
-        <div class="row" style="gap:8px;justify-content:center;margin-top:12px">
-          <button class="btn btn-primary btn-sm" onclick="goTo('log')">+ Log food now</button>
-          <button class="btn btn-outline btn-sm" onclick="seedSampleData()">🎲 Load sample data</button>
+
+        <!-- Selected Day Calories & Macro Summary Card -->
+        <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg, rgba(232,93,74,0.06), rgba(46,125,50,0.06));border:1px solid var(--line)">
+          <div class="row" style="margin-bottom:6px">
+            <div>
+              <span class="muted small">Intake for ${prettyDate(STATE.selectedDate)}</span>
+              <div style="font-size:22px;font-weight:800;color:var(--ink)">${Math.round(dayT.cal)} <span style="font-size:14px;font-weight:500;color:var(--ink-faint)">/ ${calGoal} kcal</span></div>
+            </div>
+            <span class="pill" style="font-weight:700;background:${pct>105?'rgba(232,93,74,0.15)':'rgba(46,125,50,0.15)'};color:${pct>105?'var(--coral)':'var(--primary)'}">
+              ${pct}% of goal
+            </span>
+          </div>
+          <div class="progress" style="height:6px;margin:8px 0 12px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${pct>105?'var(--coral)':'var(--primary)'};transition:width 0.3s"></div>
+          </div>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            <span class="chip" style="font-size:11.5px;padding:4px 8px">🥩 <b>${round1(dayT.p)}g</b> P</span>
+            <span class="chip" style="font-size:11.5px;padding:4px 8px">🍚 <b>${round1(dayT.c)}g</b> C</span>
+            <span class="chip" style="font-size:11.5px;padding:4px 8px">🥑 <b>${round1(dayT.fat)}g</b> F</span>
+            <span class="chip" style="font-size:11.5px;padding:4px 8px">🥦 <b>${round1(dayT.fib)}g</b> Fib</span>
+          </div>
+          <div class="row" style="gap:8px;margin-top:12px">
+            <button class="btn btn-primary btn-sm" style="flex:1" onclick="goTo('log')">+ Add to this day</button>
+            <button class="btn btn-outline btn-sm" onclick="openQuickAddSheet()">⚡ Quick add</button>
+          </div>
         </div>
       </div>
-    `}
+
+      <div class="history-col-right">
+        <!-- Meals for Selected Date -->
+        <div class="section-label" style="display:flex;justify-content:space-between;align-items:center;margin-top:0">
+          <span>Meals Logged (${STATE.todaysMeals.length})</span>
+        </div>
+        ${STATE.todaysMeals.length ? `
+          <div class="card tight" style="margin-bottom:16px">
+            ${STATE.todaysMeals.map(m=>renderMealListItem(m)).join("")}
+          </div>
+        ` : `
+          <div class="card empty-state" style="padding:18px 12px;margin-bottom:16px">
+            <div class="icon" style="font-size:24px">🍽️</div>
+            <p class="small muted" style="margin:4px 0 10px">No meals logged on ${prettyDate(STATE.selectedDate)}</p>
+            <button class="btn btn-outline btn-sm" onclick="goTo('log')">+ Log a meal</button>
+          </div>
+        `}
+
+        <!-- History Search & Past Dates Timeline -->
+        <div class="section-label" style="margin-top:8px">All History & Past Days</div>
+        <div class="field" style="margin-bottom:12px">
+          <div style="position:relative">
+            <input type="text" placeholder="Search past foods, meals or dates…" value="${esc(q)}" oninput="STATE._historyQ=this.value; render()" style="padding-left:36px">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint)">${ICO.search}</span>
+          </div>
+        </div>
+
+        ${dates.length ? dates.map(d=>{
+          const dayMeals = byDate[d] || [];
+          const dTotals = dayTotals(dayMeals);
+          const isSelected = d === STATE.selectedDate;
+          return `
+          <div class="card tight" style="margin-bottom:10px;cursor:pointer;border-left:4px solid ${isSelected?'var(--primary)':'var(--line)'}" onclick="STATE.selectedDate='${d}'; loadMealsForDate('${d}').then(render)">
+            <div class="row" style="margin-bottom:4px">
+              <div>
+                <b style="font-size:14px">${prettyDate(d)}</b>
+                ${d===todayStr()?' <span class="badge badge-source">Today</span>':''}
+              </div>
+              <b class="small" style="color:var(--coral)">${Math.round(dTotals.cal)} kcal</b>
+            </div>
+            <div class="muted small" style="margin-bottom:6px">
+              ${dayMeals.map(m=>`${m.mealType} (${(m.items||[]).map(i=>i.name).slice(0,3).join(", ")})`).join(" · ")}
+            </div>
+            <div class="row" style="font-size:11.5px;color:var(--ink-faint);gap:8px">
+              <span>🥩 ${round1(dTotals.p)}g</span>
+              <span>🍚 ${round1(dTotals.c)}g</span>
+              <span>🥑 ${round1(dTotals.fat)}g</span>
+              <span>🥦 ${round1(dTotals.fib)}g</span>
+              <span style="margin-left:auto;color:var(--primary);font-weight:600">View Day →</span>
+            </div>
+          </div>`;
+        }).join("") : `
+          <div class="card empty-state" style="padding:28px 16px">
+            <div class="icon">📅</div>
+            <h4>No history logged yet</h4>
+            <p class="small muted">Once you track meals, your complete nutrition history will show up here.</p>
+            <div class="row" style="gap:8px;justify-content:center;margin-top:12px">
+              <button class="btn btn-primary btn-sm" onclick="goTo('log')">+ Log food now</button>
+              <button class="btn btn-outline btn-sm" onclick="seedSampleData()">🎲 Load sample data</button>
+            </div>
+          </div>
+        `}
+      </div>
+    </div>
   </div>`;
 }
 /* ============================================================
@@ -3192,7 +3416,7 @@ function renderRecipes(){
   const d = STATE.recipeDraft;
   const totals = sumMacros(d.ingredients.map(i=>i.macros));
   const perServing = d.servings>0 ? Object.fromEntries(Object.entries(totals).map(([k,v])=>[k,v/d.servings])) : totals;
-  return `<div class="screen">
+  return `<div class="screen screen-narrow">
     <div class="card">
       <h3>New recipe</h3>
       <div class="field"><label>Recipe name</label><input type="text" value="${esc(d.name)}" oninput="STATE.recipeDraft.name=this.value" placeholder="e.g. Besan chilla"></div>
@@ -3341,7 +3565,7 @@ function renderWeight(){
   const cutoff = addDays(todayStr(), -days);
   const filtered = logs.filter(l=>l.date>=cutoff);
   const points = filtered.map(l=>({x:l.date, y:l.weight, label:new Date(l.date+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}));
-  return `<div class="screen">
+  return `<div class="screen screen-narrow">
     <div class="card">
       <div class="choice-grid" style="grid-template-columns:1fr 1fr 1fr">
         <div style="text-align:center"><div style="font-weight:800;font-size:18px">${round1(p.startWeightKg)}</div><div class="muted small">start</div></div>
@@ -3417,52 +3641,54 @@ function renderAnalytics(){
   const calLabels = stats.dateList.map(d=>new Date(d+"T00:00:00").toLocaleDateString(undefined,{weekday:range==='week'?'short':undefined, day:range!=='week'?'numeric':undefined}));
   const adherence = Math.round(clamp((stats.avg.cal/t.calories),0,1.3)*100);
   return `<div class="screen">
-    <div class="segmented" style="margin-bottom:12px">
+    <div class="segmented" style="margin-bottom:14px;max-width:320px">
       <button class="${range==='week'?'active':''}" onclick="STATE._analyticsRange='week'; render()">This week</button>
       <button class="${range==='month'?'active':''}" onclick="STATE._analyticsRange='month'; render()">This month</button>
     </div>
-    <div class="card">
-      <h3>Calories by day</h3>
-      ${svgBarChart(calLabels, [{data:stats.dayTotalsArr.map(d=>Math.round(d.cal)), color:"var(--coral)"}])}
-      <div class="muted small">Average ${Math.round(stats.avg.cal)} kcal/day logged · target ${t.calories} kcal</div>
-    </div>
-    <div class="card">
-      <h3>Protein by day</h3>
-      ${svgBarChart(calLabels, [{data:stats.dayTotalsArr.map(d=>Math.round(d.p)), color:"var(--protein)"}])}
-      <div class="muted small">Average ${round1(stats.avg.p)}g/day · target ${t.protein}g</div>
-    </div>
-    <div class="card">
-      <div class="row"><h3>Macro distribution</h3></div>
-      <div class="row" style="align-items:center;gap:16px">
-        ${svgDonut([{value:stats.avg.p*4,color:"var(--protein)"},{value:stats.avg.c*4,color:"var(--carbs)"},{value:stats.avg.fat*9,color:"var(--fat)"}])}
-        <div class="stack" style="flex:1">
-          <div class="row small"><span><span class="macro-dot" style="background:var(--protein);display:inline-block;margin-right:6px"></span>Protein</span><span>${Math.round(stats.avg.p*4/((stats.avg.p*4+stats.avg.c*4+stats.avg.fat*9)||1)*100)}%</span></div>
-          <div class="row small"><span><span class="macro-dot" style="background:var(--carbs);display:inline-block;margin-right:6px"></span>Carbs</span><span>${Math.round(stats.avg.c*4/((stats.avg.p*4+stats.avg.c*4+stats.avg.fat*9)||1)*100)}%</span></div>
-          <div class="row small"><span><span class="macro-dot" style="background:var(--fat);display:inline-block;margin-right:6px"></span>Fat</span><span>${Math.round(stats.avg.fat*9/((stats.avg.p*4+stats.avg.c*4+stats.avg.fat*9)||1)*100)}%</span></div>
+    <div class="analytics-grid">
+      <div class="card">
+        <h3>Calories by day</h3>
+        ${svgBarChart(calLabels, [{data:stats.dayTotalsArr.map(d=>Math.round(d.cal)), color:"var(--coral)"}])}
+        <div class="muted small">Average ${Math.round(stats.avg.cal)} kcal/day logged · target ${t.calories} kcal</div>
+      </div>
+      <div class="card">
+        <h3>Protein by day</h3>
+        ${svgBarChart(calLabels, [{data:stats.dayTotalsArr.map(d=>Math.round(d.p)), color:"var(--protein)"}])}
+        <div class="muted small">Average ${round1(stats.avg.p)}g/day · target ${t.protein}g</div>
+      </div>
+      <div class="card">
+        <div class="row"><h3>Macro distribution</h3></div>
+        <div class="row" style="align-items:center;gap:16px">
+          ${svgDonut([{value:stats.avg.p*4,color:"var(--protein)"},{value:stats.avg.c*4,color:"var(--carbs)"},{value:stats.avg.fat*9,color:"var(--fat)"}])}
+          <div class="stack" style="flex:1">
+            <div class="row small"><span><span class="macro-dot" style="background:var(--protein);display:inline-block;margin-right:6px"></span>Protein</span><span>${Math.round(stats.avg.p*4/((stats.avg.p*4+stats.avg.c*4+stats.avg.fat*9)||1)*100)}%</span></div>
+            <div class="row small"><span><span class="macro-dot" style="background:var(--carbs);display:inline-block;margin-right:6px"></span>Carbs</span><span>${Math.round(stats.avg.c*4/((stats.avg.p*4+stats.avg.c*4+stats.avg.fat*9)||1)*100)}%</span></div>
+            <div class="row small"><span><span class="macro-dot" style="background:var(--fat);display:inline-block;margin-right:6px"></span>Fat</span><span>${Math.round(stats.avg.fat*9/((stats.avg.p*4+stats.avg.c*4+stats.avg.fat*9)||1)*100)}%</span></div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="choice-grid" style="grid-template-columns:1fr 1fr">
-      <div class="card tight" style="text-align:center"><div style="font-weight:800;font-size:20px">${stats.loggedDays}/${stats.totalDays}</div><div class="muted small">days logged</div></div>
-      <div class="card tight" style="text-align:center"><div style="font-weight:800;font-size:20px">${adherence}%</div><div class="muted small">of calorie target</div></div>
-    </div>
-    <div class="card">
-      <h3>Weekday vs weekend</h3>
-      <div class="row small"><span>Weekday avg</span><span><b>${Math.round(stats.avgWk)} kcal</b></span></div>
-      <div class="row small"><span>Weekend avg</span><span><b>${Math.round(stats.avgWe)} kcal</b></span></div>
-    </div>
-    <div class="card">
-      <h3>Most frequently logged foods</h3>
-      ${stats.topFoods.length? stats.topFoods.map(([name,ct])=>`<div class="kv"><span class="k">${esc(name)}</span><span class="v">${ct}×</span></div>`).join("") : `<div class="empty-state small">Not enough data yet</div>`}
-    </div>
-    <div class="card">
-      <h3>Weight trend</h3>
-      ${(()=>{ const wl = STATE.weightLogs.filter(l=>l.date>=start&&l.date<=end).map(l=>({x:l.date,y:l.weight,label:new Date(l.date+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}));
-        return wl.length>=2 ? svgLineChart(wl,{color:"var(--leaf)",fill:"var(--leaf-soft)"}) : `<div class="empty-state small">Log weight on 2+ days in this range to see a trend</div>`; })()}
-    </div>
-    <div class="card">
-      <div class="row"><h3>${ICO.sparkle} Smart insights</h3></div>
-      ${renderInsightsBlock(stats)}
+      <div class="choice-grid" style="grid-template-columns:1fr 1fr;align-content:start">
+        <div class="card tight" style="text-align:center"><div style="font-weight:800;font-size:20px">${stats.loggedDays}/${stats.totalDays}</div><div class="muted small">days logged</div></div>
+        <div class="card tight" style="text-align:center"><div style="font-weight:800;font-size:20px">${adherence}%</div><div class="muted small">of calorie target</div></div>
+      </div>
+      <div class="card">
+        <h3>Weekday vs weekend</h3>
+        <div class="row small"><span>Weekday avg</span><span><b>${Math.round(stats.avgWk)} kcal</b></span></div>
+        <div class="row small"><span>Weekend avg</span><span><b>${Math.round(stats.avgWe)} kcal</b></span></div>
+      </div>
+      <div class="card">
+        <h3>Most frequently logged foods</h3>
+        ${stats.topFoods.length? stats.topFoods.map(([name,ct])=>`<div class="kv"><span class="k">${esc(name)}</span><span class="v">${ct}×</span></div>`).join("") : `<div class="empty-state small">Not enough data yet</div>`}
+      </div>
+      <div class="card">
+        <h3>Weight trend</h3>
+        ${(()=>{ const wl = STATE.weightLogs.filter(l=>l.date>=start&&l.date<=end).map(l=>({x:l.date,y:l.weight,label:new Date(l.date+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}));
+          return wl.length>=2 ? svgLineChart(wl,{color:"var(--leaf)",fill:"var(--leaf-soft)"}) : `<div class="empty-state small">Log weight on 2+ days in this range to see a trend</div>`; })()}
+      </div>
+      <div class="card">
+        <div class="row"><h3>${ICO.sparkle} Smart insights</h3></div>
+        ${renderInsightsBlock(stats)}
+      </div>
     </div>
   </div>`;
 }
@@ -3488,7 +3714,7 @@ async function runInsights(){
    ============================================================ */
 function renderReports(){
   const d = STATE._reportDate || STATE.selectedDate;
-  return `<div class="screen">
+  return `<div class="screen screen-narrow">
     <div class="field"><label>Report date</label><input type="date" value="${d}" onchange="STATE._reportDate=this.value; loadReportData(this.value)"></div>
     <div id="report-host">${renderDailyReportCard(d)}</div>
     <div class="section-label">Weekly report</div>
@@ -3675,7 +3901,7 @@ function renderAssistant(){
     "🥑 High-protein vegetarian snack ideas",
     "💧 Tips to reach my water goal"
   ];
-  return `<div class="screen" style="display:flex;flex-direction:column;min-height:calc(100vh - 120px)">
+  return `<div class="screen screen-narrow" style="display:flex;flex-direction:column;min-height:calc(100vh - 120px)">
     <div class="row" style="margin-bottom:8px;justify-content:space-between;align-items:center">
       <div style="display:flex;align-items:center;gap:6px">
         <span style="color:var(--coral);font-size:18px">✨</span>
@@ -3743,7 +3969,7 @@ function scrollChatBottom(){ requestAnimationFrame(()=>{ const el=document.getEl
    ============================================================ */
 function renderNotifications(){
   const unread = STATE.notifications.filter(n=>!n.read).length;
-  return `<div class="screen">
+  return `<div class="screen screen-narrow">
     <div class="row" style="margin-bottom:10px">
       <span class="muted small">${unread} unread</span>
       ${unread>0?`<button class="link-btn" onclick="NotificationService.markAllRead()">Mark all read</button>`:""}
@@ -3764,7 +3990,7 @@ function renderFavorites(){
   const foods = STATE.favorites.filter(f=>f.type==="food");
   const meals = STATE.favorites.filter(f=>f.type==="meal");
   const products = STATE.customFoods.filter(f=>f.isProduct);
-  return `<div class="screen">
+  return `<div class="screen screen-narrow">
     <div class="section-label">Favourite foods</div>
     ${foods.length? `<div class="card tight">${foods.map(f=>`<div class="list-item"><div class="thumb">🍽️</div><div style="flex:1"><div class="item-title">${esc(f.name)}</div></div><button class="icon-btn" style="width:30px;height:30px" onclick="removeFavorite('${f.id}')">${ICO.close}</button></div>`).join("")}</div>` : `<div class="empty-state small">No favourite foods yet</div>`}
     <div class="section-label">Favourite meals</div>
@@ -3782,7 +4008,7 @@ async function removeFavorite(favId){ await StorageService.deleteFromCollection(
    ============================================================ */
 function renderProfileEdit(){
   const p = STATE.profile;
-  return `<div class="screen">
+  return `<div class="screen screen-narrow">
     <div class="card">
       <h3>About you</h3>
       <div class="field"><label>Name</label><input type="text" value="${esc(p.name)}" onchange="updateProfileField('name',this.value)"></div>
@@ -3841,7 +4067,7 @@ function renderSettings(){
   const s = STATE.settings;
   const isGuest = isGuestUser();
   const trialDays = getTrialDaysUsed() + 1;
-  return `<div class="screen">
+  return `<div class="screen screen-narrow">
     ${isGuest ? `
       <div class="card" style="border:1.5px solid var(--primary);background:rgba(46,125,50,0.06)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
