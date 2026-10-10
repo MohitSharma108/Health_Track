@@ -1917,6 +1917,18 @@ function renderHome(){
       </button>
     </div>
 
+    <!-- 1-Tap Quick Action Hub: Log & History -->
+    <div class="choice-grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <button class="btn btn-primary" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-radius:var(--radius-md);box-shadow:0 3px 10px rgba(229,87,63,0.22);font-weight:700" onclick="goTo('log')">
+        <span style="font-size:18px">➕</span>
+        <span>Log Food</span>
+      </button>
+      <button class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-radius:var(--radius-md);background:var(--card);font-weight:700" onclick="goTo('meals')">
+        <span style="font-size:18px">📜</span>
+        <span>Meal History</span>
+      </button>
+    </div>
+
     ${renderMicroNutrientInsights(totals)}
 
     <button class="card" style="width:100%;text-align:left;display:flex;align-items:center;gap:14px;cursor:pointer;border-color:var(--coral)" onclick="openWhatToEat()">
@@ -4491,6 +4503,7 @@ function openAuthModal(mode="register"){
 }
 function dismissAuthModal(){
   STATE.showAuthModal = false;
+  STATE.auth = {loggedOut: false};
   STATE.authError = null;
   render();
 }
@@ -4499,29 +4512,34 @@ function renderAuthScreen(){
   const mode = STATE.authMode||"login";
   const f = STATE.authForm||(STATE.authForm={email:"",password:"",name:""});
   const expired = isTrialExpired();
-  const canDismiss = STATE.showAuthModal && !expired;
-  let title = "Nourish";
-  let subtitle = mode==='login'?'Log in to your account':'Create your account';
-  if(expired){
-    title = "🎉 7-Day Free Pass Completed!";
-    subtitle = "Create your free account or log in to sync all your 7-day meals, streak, and weight progress to the cloud!";
-  } else if(STATE.showAuthModal){
-    title = "☁️ Sync to Cloud";
-    subtitle = "Save your 7-day free trial data to your cloud account so you never lose your progress.";
-  }
+  let title = mode==='login' ? 'Welcome Back!' : 'Save & Sync Progress';
+  let subtitle = mode==='login'
+    ? 'Log in to access your cloud meal logs and daily goals.'
+    : (expired ? '7-Day Free Pass complete! Create your account to keep your streak.' : 'Create your free account to sync your 7-day trial data to the cloud.');
 
-  return `<div class="screen" style="padding-top:10vh;text-align:center">
+  return `<div class="screen" style="padding-top:6vh;text-align:center">
     <div style="font-size:46px;margin-bottom:6px">🥗</div>
-    <h1 style="font-size:26px;margin-bottom:6px">${title}</h1>
-    <p class="muted small" style="margin-bottom:24px;max-width:320px;margin-left:auto;margin-right:auto;line-height:1.4">${subtitle}</p>
+    <h1 style="font-size:26px;margin-bottom:4px">${title}</h1>
+    <p class="muted small" style="margin-bottom:18px;max-width:320px;margin-left:auto;margin-right:auto;line-height:1.4">${subtitle}</p>
+
+    <!-- Segmented Tab: Log In vs Create Account -->
+    <div class="segmented" style="max-width:320px;margin:0 auto 16px">
+      <button type="button" class="${mode==='login'?'active':''}" onclick="STATE.authMode='login'; STATE.authError=null; render()">🔐 Log In</button>
+      <button type="button" class="${mode==='register'?'active':''}" onclick="STATE.authMode='register'; STATE.authError=null; render()">✨ Create Account</button>
+    </div>
+
     <div class="stack" style="text-align:left;max-width:320px;margin:0 auto">
-      ${mode==='register'?`<div class="field"><label>Name</label><input type="text" autocomplete="name" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value"></div>`:""}
-      <div class="field"><label>Email</label><input type="email" autocomplete="email" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value"></div>
-      <div class="field"><label>Password</label><input type="password" autocomplete="${mode==='login'?'current-password':'new-password'}" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value" onkeydown="if(event.key==='Enter') submitAuth()"></div>
+      ${mode==='register'?`<div class="field"><label>Your Name (optional)</label><input type="text" autocomplete="name" placeholder="Enter your name" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value"></div>`:""}
+      <div class="field"><label>Email address</label><input type="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value"></div>
+      <div class="field"><label>Password</label><input type="password" autocomplete="${mode==='login'?'current-password':'new-password'}" placeholder="Enter your password" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value" onkeydown="if(event.key==='Enter') submitAuth()"></div>
       ${STATE.authError?`<div class="error-box">${esc(STATE.authError)}</div>`:""}
-      <button class="btn btn-primary btn-block" onclick="submitAuth()" ${STATE.authLoading?'disabled':''}>${STATE.authLoading?'Please wait…':(mode==='login'?'Log in':'Create account & Sync')}</button>
-      <button class="link-btn" style="margin-top:4px" onclick="STATE.authMode=(mode==='login'?'register':'login'); STATE.authError=null; render()">${mode==='login'?"New here? Create an account":"Already have an account? Log in"}</button>
-      ${canDismiss?`<button class="link-btn" style="margin-top:10px;opacity:0.8" onclick="dismissAuthModal()">← Back to guest tracker (Day ${getTrialDaysUsed()+1} of 7)</button>`:""}
+      <button class="btn btn-primary btn-block" onclick="submitAuth()" ${STATE.authLoading?'disabled':''}>${STATE.authLoading?'Please wait…':(mode==='login'?'Log In & Access Data':'Create Account & Sync')}</button>
+      
+      <div style="text-align:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+        <button class="link-btn" style="font-weight:600;font-size:13px;color:var(--primary)" onclick="dismissAuthModal()">
+          ← Continue to Log Meals & History (Guest Mode)
+        </button>
+      </div>
     </div>
     ${!RUNTIME.apiUp?`<div class="error-box" style="margin-top:20px;max-width:320px;margin-left:auto;margin-right:auto">Can't reach the Nourish server at ${esc(API_BASE)}. Make sure the backend is running, then reload.</div>`:""}
   </div>`;
@@ -4573,19 +4591,21 @@ async function syncGuestDataToServer(){
 
 async function submitAuth(){
   const mode = STATE.authMode||"login"; const f = STATE.authForm;
-  if(!f.email || !f.password || (mode==='register' && !f.name)){ STATE.authError="Please fill in all fields."; render(); return; }
+  const cleanEmail = (f.email||"").trim().toLowerCase();
+  if(!cleanEmail || !f.password){ STATE.authError="Please enter your email and password."; render(); return; }
   STATE.authLoading = true; STATE.authError=null; render();
   try{
-    const body = mode==='login' ? {email:f.email, password:f.password} : {email:f.email, password:f.password, name:f.name};
+    const body = mode==='login' ? {email:cleanEmail, password:f.password} : {email:cleanEmail, password:f.password, name:f.name||""};
     const res = await apiPost(`/auth/${mode}`, body);
     setAuthToken(res.token);
     STATE.auth = {loggedOut:false};
     STATE.showAuthModal = false;
     STATE.authForm = {email:"", password:"", name:""};
-    if(mode === 'register'){
+    if(mode === 'register' || res.isNewUser){
       await syncGuestDataToServer();
     }
     await loadEverythingAfterAuth();
+    toast(res.isNewUser ? "Welcome! Account created and data synced." : "Welcome back! Logged in successfully.");
   }catch(e){
     STATE.authLoading = false;
     STATE.authError = (e && e.message) || "Something went wrong — please try again.";
