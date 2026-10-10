@@ -3953,9 +3953,24 @@ async function loadSampleData(){
   goTo("home");
 }
 async function logOut(){
-  try{ await apiDelete("/auth/me"); }catch(e){}
+  try{ await apiPost("/auth/logout", {}).catch(()=>{}); }catch(e){}
   setAuthToken(null);
   STATE.auth = {loggedOut:true};
+  STATE.profile = null;
+  STATE.todaysMeals = [];
+  STATE._allMealsCache = [];
+  STATE.weightLogs = [];
+  STATE.favorites = [];
+  STATE.recipes = [];
+  STATE.notifications = [];
+  STATE.customFoods = [];
+  STATE.todaysWaterMl = 0;
+  STATE.draftMeal = null;
+  STATE.authForm = {email:"", password:"", name:""};
+  STATE.authError = null;
+  LocalFallback.store = {};
+  saveLocalFallback();
+  toast("Logged out successfully");
   render();
 }
 
@@ -4500,9 +4515,9 @@ function renderAuthScreen(){
     <h1 style="font-size:26px;margin-bottom:6px">${title}</h1>
     <p class="muted small" style="margin-bottom:24px;max-width:320px;margin-left:auto;margin-right:auto;line-height:1.4">${subtitle}</p>
     <div class="stack" style="text-align:left;max-width:320px;margin:0 auto">
-      ${mode==='register'?`<div class="field"><label>Name</label><input type="text" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value"></div>`:""}
-      <div class="field"><label>Email</label><input type="email" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value"></div>
-      <div class="field"><label>Password</label><input type="password" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value" onkeydown="if(event.key==='Enter') submitAuth()"></div>
+      ${mode==='register'?`<div class="field"><label>Name</label><input type="text" autocomplete="name" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value"></div>`:""}
+      <div class="field"><label>Email</label><input type="email" autocomplete="email" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value"></div>
+      <div class="field"><label>Password</label><input type="password" autocomplete="${mode==='login'?'current-password':'new-password'}" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value" onkeydown="if(event.key==='Enter') submitAuth()"></div>
       ${STATE.authError?`<div class="error-box">${esc(STATE.authError)}</div>`:""}
       <button class="btn btn-primary btn-block" onclick="submitAuth()" ${STATE.authLoading?'disabled':''}>${STATE.authLoading?'Please wait…':(mode==='login'?'Log in':'Create account & Sync')}</button>
       <button class="link-btn" style="margin-top:4px" onclick="STATE.authMode=(mode==='login'?'register':'login'); STATE.authError=null; render()">${mode==='login'?"New here? Create an account":"Already have an account? Log in"}</button>
@@ -4566,7 +4581,10 @@ async function submitAuth(){
     setAuthToken(res.token);
     STATE.auth = {loggedOut:false};
     STATE.showAuthModal = false;
-    await syncGuestDataToServer();
+    STATE.authForm = {email:"", password:"", name:""};
+    if(mode === 'register'){
+      await syncGuestDataToServer();
+    }
     await loadEverythingAfterAuth();
   }catch(e){
     STATE.authLoading = false;
