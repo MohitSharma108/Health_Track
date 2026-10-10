@@ -124,6 +124,13 @@ const prismaProxy = new Proxy({}, {
     if (prop === '$queryRaw') {
       return async () => [{ '?column?': 1 }];
     }
+    if (prop === '$disconnect' || prop === '$connect') {
+      return async () => {
+        if (realPrisma && typeof realPrisma[prop] === 'function') {
+          return await realPrisma[prop]();
+        }
+      };
+    }
     if (realPrisma && prop in realPrisma) {
       return Reflect.get(realPrisma, prop, receiver);
     }
