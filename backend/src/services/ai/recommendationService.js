@@ -12,12 +12,23 @@ async function whatToEatNow(ctx) {
 Suggest 3 realistic meal/snack options for a user right now, based on their remaining daily nutrition
 budget and preferences.
 ${cuisineGuidance}
-Be practical and specific (real dishes/foods with portion sizes), not vague.
+IMPORTANT: For every meal option, you MUST specify exact ingredient quantities and portions (e.g. 150g paneer, 2 rotis / 80g, 1 tsp ghee / 5g) so the user knows exactly how much to take and prepare.
 Context (JSON): ${JSON.stringify(ctx)}
 Reply with ONLY a JSON object:
-{"options":[{"name":string,"description":string,"calories":number,"protein":number,"carbs":number,
-"fat":number,"fibre":number,"estimatedCost":string|null,"whyItFits":string}]}`;
-  return askJSON({ prompt, maxTokens: 2000 });
+{"options":[{
+  "name":string,
+  "description":string,
+  "portionBreakdown":string,
+  "ingredients":[{"name":string,"qty":string,"proteinG":number,"calories":number}],
+  "calories":number,
+  "protein":number,
+  "carbs":number,
+  "fat":number,
+  "fibre":number,
+  "estimatedCost":string|null,
+  "whyItFits":string
+}]}`;
+  return askJSON({ prompt, maxTokens: 2500 });
 }
 
 async function planDay(ctx) {
@@ -28,15 +39,23 @@ async function planDay(ctx) {
     : `Cuisine preference: ${cuisinePref}.`;
 
   const prompt = `${MEDICAL_GUARDRAIL}
-Create a one-day meal plan (breakfast, lunch, evening snack, dinner) that fits the user's daily targets
-and preferences.
+Create an easy-to-follow one-day meal plan (breakfast, lunch, evening snack, dinner) that fits the user's daily targets and preferences.
 ${cuisineGuidance}
-Be specific and realistic with portion sizes and calculated macros.
+IMPORTANT: For every meal, include the exact portion sizes and ingredient quantities ("how much to take", e.g. "150g paneer, 2 rotis (80g), 1 bowl dal (200g)").
 Context (JSON): ${JSON.stringify(ctx)}
 Reply with ONLY a JSON object:
-{"meals":[{"mealType":string,"name":string,"description":string,"calories":number,"protein":number,
-"carbs":number,"fat":number,"fibre":number}],"dayTotals":{"calories":number,"protein":number,"carbs":number,
-"fat":number,"fibre":number}}`;
+{"meals":[{
+  "mealType":string,
+  "name":string,
+  "description":string,
+  "portionBreakdown":string,
+  "ingredients":[{"name":string,"qty":string,"proteinG":number,"calories":number}],
+  "calories":number,
+  "protein":number,
+  "carbs":number,
+  "fat":number,
+  "fibre":number
+}],"dayTotals":{"calories":number,"protein":number,"carbs":number,"fat":number,"fibre":number}}`;
   return askJSON({ prompt, maxTokens: 3000 });
 }
 
@@ -48,12 +67,22 @@ async function regenerateMeal(ctx, mealType) {
     : `Cuisine preference: ${cuisinePref}.`;
 
   const prompt = `${MEDICAL_GUARDRAIL}
-Suggest ONE replacement ${mealType} option fitting this user's targets and preferences.
+Suggest ONE replacement ${mealType} option fitting this user's targets and preferences, with exact ingredient quantities ("how much to take").
 ${cuisineGuidance}
 Context (JSON): ${JSON.stringify(ctx)}
-Reply with ONLY: {"mealType":${JSON.stringify(mealType)},"name":string,"description":string,"calories":number,
-"protein":number,"carbs":number,"fat":number,"fibre":number}`;
-  return askJSON({ prompt, maxTokens: 1200 });
+Reply with ONLY: {
+  "mealType":${JSON.stringify(mealType)},
+  "name":string,
+  "description":string,
+  "portionBreakdown":string,
+  "ingredients":[{"name":string,"qty":string,"proteinG":number,"calories":number}],
+  "calories":number,
+  "protein":number,
+  "carbs":number,
+  "fat":number,
+  "fibre":number
+}`;
+  return askJSON({ prompt, maxTokens: 1400 });
 }
 
 module.exports = { whatToEatNow, planDay, regenerateMeal };

@@ -5467,22 +5467,74 @@ function renderEatNow(){
   if(e.status==="loading") return `<div class="analyzing-pulse" style="padding:24px 16px;text-align:center">
     <div class="pulse-ring" style="width:36px;height:36px;margin:0 auto 10px"></div>
     <div style="font-weight:700;font-size:15px;margin-bottom:4px">Finding options for you…</div>
-    <div class="muted small">Calculating high-protein ${esc(e.cuisine||'Indian')} meals that fit your remaining targets</div>
+    <div class="muted small">Calculating high-protein ${esc(e.cuisine||'Indian')} meals with exact ingredient portions</div>
   </div>`;
   if(e.status==="error") return `<div class="error-box">${esc(e.error)}</div><button class="btn btn-primary btn-block" style="margin-top:10px" onclick="fetchEatNow()">Try again</button>`;
   if(e.status==="results"){
-    return e.options.map((o,idx)=>`<div class="card tight" style="margin-bottom:12px;border:1px solid var(--line)">
-      <div class="row"><b>${esc(o.name)}</b><span class="badge badge-ai">✨ Recommended</span></div>
-      <p class="small muted" style="margin:4px 0">${esc(o.description)}</p>
+    return e.options.map((o,idx)=>`<div class="card tight" style="margin-bottom:14px;border:1.5px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+      <div class="row">
+        <b style="font-size:15px">${esc(o.name)}</b>
+        <span class="badge badge-ai" style="font-size:11px">✨ Recommended</span>
+      </div>
+      <p class="small muted" style="margin:4px 0 6px">${esc(o.description)}</p>
+      
+      <!-- Exact Quantities: How much to take -->
+      ${renderPortionBreakdown(o)}
+
       ${renderEstimatedNutritionCard({cal:o.calories,p:o.protein,c:o.carbs,fat:o.fat,fib:o.fibre}, "Estimated nutrition")}
       <p class="small" style="margin:6px 0 8px"><b>Why it fits:</b> ${esc(o.whyItFits)}${o.estimatedCost?` · ~${esc(o.estimatedCost)}`:""}</p>
-      <button class="btn btn-leaf btn-block btn-sm" onclick="addEatSuggestion(${idx})">+ Add this meal to today</button>
+      
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn btn-leaf btn-sm" style="flex:1.2;font-weight:700" onclick="addEatSuggestion(${idx})">
+          ➕ Add to today's log
+        </button>
+        <button class="btn btn-outline btn-sm" style="flex:1;font-weight:700;background:var(--card)" onclick="openEatSuggestionInDraft(${idx})">
+          ✏️ Customize in draft
+        </button>
+      </div>
     </div>`).join("") + `<button class="link-btn" style="margin-top:6px" onclick="fetchEatNow()">↻ Get different options</button>`;
   }
   const ctx = buildEatContext();
   return `<p class="muted small" style="margin-bottom:12px">Based on ${ctx.remaining.calories} kcal and ${ctx.remaining.protein}g protein remaining today.</p>
     <button class="btn btn-primary btn-block" onclick="fetchEatNow()">✨ Get suggestions</button>`;
 }
+
+function renderPortionBreakdown(item){
+  if(!item) return "";
+  let list = [];
+  if(Array.isArray(item.ingredients) && item.ingredients.length > 0){
+    list = item.ingredients;
+  } else if(item.portionBreakdown){
+    const parts = item.portionBreakdown.split(/\s*\+\s*/);
+    list = parts.map(p => {
+      const m = p.trim().match(/^([\d\.]+\s*[a-zA-Z]+|\d+\s*[a-zA-Z]+|\d+)\s+(.*)$/);
+      return m ? { name: m[2], qty: m[1] } : { name: p.trim(), qty: "" };
+    });
+  } else if(item.description){
+    const descMatches = item.description.match(/\b\d+\s*(?:g|ml|rotis?|phulkas?|eggs?|cups?|bowls?|slices?|pieces?)\b[^,.]*/gi);
+    if(descMatches && descMatches.length >= 1){
+      list = descMatches.map(m => ({ name: m.trim(), qty: "" }));
+    }
+  }
+
+  if(!list || !list.length) return "";
+
+  return `<div style="margin:8px 0 10px;padding:10px 12px;background:var(--card-tint);border-radius:var(--radius-md);border:1.5px dashed var(--coral);box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+    <div style="font-weight:800;font-size:12px;color:var(--coral-dark);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+      <span style="display:flex;align-items:center;gap:5px">⚖️ Exactly how much to take:</span>
+      <span class="muted small" style="font-size:10.5px">Exact quantities</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      ${list.map(it => `
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:2px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
+          <span style="font-weight:600;color:var(--ink)">• ${esc(it.name)}</span>
+          ${it.qty ? `<span style="font-weight:800;color:var(--coral);font-size:13px">${esc(it.qty)} ${it.proteinG ? `<span class="muted" style="font-size:11px;font-weight:600">(${it.proteinG}g P)</span>` : ''}</span>` : ''}
+        </div>
+      `).join("")}
+    </div>
+  </div>`;
+}
+
 function generateLocalMealSuggestions(ctx){
   const remCal = (ctx && ctx.remaining && ctx.remaining.calories) || 500;
   const remP = (ctx && ctx.remaining && ctx.remaining.protein) || 25;
@@ -5492,72 +5544,140 @@ function generateLocalMealSuggestions(ctx){
   const indianOptions = [
     {
       name: "Paneer Bhurji with 2 Multigrain Rotis",
-      description: "150g spiced crumbled paneer cooked with onions, tomatoes, green chilies, served with 2 warm multigrain phulkas.",
-      calories: 440, protein: 28, carbs: 36, fat: 22, fibre: 7, estimatedCost: "₹90",
-      whyItFits: "Delivers 28g high-quality vegetarian protein while keeping carbohydrates moderate.",
+      description: "Fresh crumbled paneer sautéed with chopped onions, tomatoes, ginger, and spices, paired with 2 warm multigrain phulkas.",
+      portionBreakdown: "150g paneer + 2 multigrain rotis (80g) + 1 tsp ghee",
+      ingredients: [
+        { name: "Fresh / Low-fat Paneer", qty: "150g", proteinG: 27, calories: 280 },
+        { name: "Multigrain Roti", qty: "2 rotis (80g)", proteinG: 5, calories: 150 },
+        { name: "Onion, Tomato & Chilli", qty: "1 cup (80g)", proteinG: 1, calories: 25 },
+        { name: "Ghee / Cooking Oil", qty: "1 tsp (5g)", proteinG: 0, calories: 45 }
+      ],
+      calories: 450, protein: 31, carbs: 42, fat: 16, fibre: 7, estimatedCost: "₹85",
+      whyItFits: "High-protein paneer (31g protein total) and complex carbs from multigrain rotis keep you satisfied for hours.",
       veg: true
     },
     {
       name: "Moong Dal Chilla with Mint Chutney & Paneer Filling",
-      description: "2 savoury golden crepes made from soaked moong dal batter, stuffed with grated low-fat paneer and fresh herbs.",
-      calories: 340, protein: 26, carbs: 32, fat: 12, fibre: 8, estimatedCost: "₹70",
-      whyItFits: "Rich in plant protein and dietary fibre; light on the stomach and quick to prepare.",
+      description: "2 golden crispy crepes made from soaked moong dal batter, stuffed with crumbled paneer and fresh coriander.",
+      portionBreakdown: "60g moong dal batter + 50g paneer filling + 2 tbsp mint chutney",
+      ingredients: [
+        { name: "Moong Dal Batter", qty: "60g dry (2 chillas)", proteinG: 14, calories: 200 },
+        { name: "Crumbled Paneer stuffing", qty: "50g", proteinG: 9, calories: 95 },
+        { name: "Mint & Coriander Chutney", qty: "2 tbsp (30g)", proteinG: 1, calories: 20 },
+        { name: "Ghee / Oil for greasing", qty: "1/2 tsp (2.5g)", proteinG: 0, calories: 22 }
+      ],
+      calories: 337, protein: 24, carbs: 34, fat: 12, fibre: 8, estimatedCost: "₹65",
+      whyItFits: "Light on digestion, packed with 24g clean bio-available protein and high dietary fibre.",
       veg: true
     },
     {
       name: "Soya Chunks Pulao with Cucumber Raita",
-      description: "50g high-protein Nutrela soya chunks sautéed with basmati rice, peas, and cumin, paired with a cool curd bowl.",
-      calories: 420, protein: 35, carbs: 48, fat: 8, fibre: 9, estimatedCost: "₹60",
-      whyItFits: "Massive 35g protein boost with low fat; ideal for hitting your daily protein target.",
+      description: "High-protein Nutrela soya chunks cooked with aromatic basmati rice, green peas, and whole spices, served with fresh cooling curd.",
+      portionBreakdown: "50g soya chunks (dry) + 1 bowl basmati rice (160g) + 1 bowl curd (150g)",
+      ingredients: [
+        { name: "Soya Chunks (dry / raw)", qty: "50g dry (~26g P)", proteinG: 26, calories: 172 },
+        { name: "Basmati Rice (cooked)", qty: "1 bowl (160g)", proteinG: 4, calories: 190 },
+        { name: "Fresh Curd (Dahi) Raita", qty: "1 bowl (150g)", proteinG: 5, calories: 90 },
+        { name: "Green Peas & Onions", qty: "1/2 cup (50g)", proteinG: 2, calories: 35 }
+      ],
+      calories: 440, protein: 37, carbs: 54, fat: 7, fibre: 9, estimatedCost: "₹55",
+      whyItFits: "Unmatched protein value: 37g protein for just 440 kcal, keeping fat super low.",
       veg: true
     },
     {
-      name: "Egg Bhurji (3 Eggs) with Toasted Whole Wheat Bread",
-      description: "3 whole eggs scrambled Indian style with onions, ginger, turmeric, and coriander, served with 2 slices of whole wheat toast.",
-      calories: 380, protein: 26, carbs: 28, fat: 18, fibre: 4, estimatedCost: "₹55",
-      whyItFits: "Complete amino acid profile with essential healthy fats and vitamins.",
+      name: "Egg Bhurji (3 Eggs) with Whole Wheat Toast",
+      description: "3 whole eggs scrambled Indian style with fine-chopped onions, ginger, green chilies, and coriander, served with 2 toasted whole wheat slices.",
+      portionBreakdown: "3 large eggs + 2 slices whole wheat bread + 1 tsp butter",
+      ingredients: [
+        { name: "Whole Eggs", qty: "3 large eggs", proteinG: 19, calories: 215 },
+        { name: "Whole Wheat Bread", qty: "2 slices (60g)", proteinG: 8, calories: 145 },
+        { name: "Onions, Tomatoes & Spices", qty: "1/2 cup (60g)", proteinG: 1, calories: 20 },
+        { name: "Butter or Oil", qty: "1 tsp (5g)", proteinG: 0, calories: 45 }
+      ],
+      calories: 425, protein: 28, carbs: 32, fat: 19, fibre: 4, estimatedCost: "₹50",
+      whyItFits: "Complete protein with all 9 essential amino acids plus choline, ready in under 8 minutes.",
       veg: false
     },
     {
       name: "Tandoori Chicken Tikka with Garden Salad & Lemon",
-      description: "180g succulent marinated chicken breast cubes roasted with yogurt and tandoori spices, with onion rings and mint dip.",
-      calories: 310, protein: 44, carbs: 6, fat: 12, fibre: 2, estimatedCost: "₹140",
-      whyItFits: "Ultra-high protein (44g) with ultra-low carbs, perfect if you need protein without extra calories.",
+      description: "Tender boneless chicken breast cubes marinated in yogurt and aromatic spices, roasted juicy with crisp onion rings and mint dip.",
+      portionBreakdown: "180g skinless chicken breast + 1 bowl garden salad + mint dip",
+      ingredients: [
+        { name: "Chicken Breast (boneless)", qty: "180g raw", proteinG: 43, calories: 220 },
+        { name: "Hung Curd & Marinade", qty: "2 tbsp (30g)", proteinG: 2, calories: 35 },
+        { name: "Garden Salad (Cucumber, Onion)", qty: "1 bowl (120g)", proteinG: 1, calories: 25 },
+        { name: "Mustard Oil / Ghee brush", qty: "1 tsp (5g)", proteinG: 0, calories: 45 }
+      ],
+      calories: 325, protein: 46, carbs: 7, fat: 11, fibre: 3, estimatedCost: "₹130",
+      whyItFits: "Pure lean protein powerhouse (46g protein) with almost zero carbs, ideal for fat loss & muscle building.",
       veg: false
     },
     {
       name: "Sprouted Moong & Kala Chana Chaat with Roasted Peanuts",
-      description: "150g steamed sprouted green moong and black chickpeas tossed with chopped cucumber, tomato, chaat masala, roasted peanuts, and lime.",
-      calories: 270, protein: 17, carbs: 38, fat: 6, fibre: 11, estimatedCost: "₹40",
-      whyItFits: "High fibre (11g) and plant bio-available micronutrients that keep you satiated for hours.",
+      description: "Steamed green moong and black chana sprouts tossed with roasted peanuts, chaat masala, cucumber, tomatoes, and lime juice.",
+      portionBreakdown: "100g moong sprouts + 50g kala chana (boiled) + 15g roasted peanuts",
+      ingredients: [
+        { name: "Moong Dal Sprouts (steamed)", qty: "100g", proteinG: 7, calories: 95 },
+        { name: "Kala Chana (boiled)", qty: "50g", proteinG: 5, calories: 80 },
+        { name: "Roasted Peanuts", qty: "1 tbsp (15g)", proteinG: 4, calories: 85 },
+        { name: "Cucumber, Tomato & Lemon", qty: "1 bowl (100g)", proteinG: 1, calories: 22 }
+      ],
+      calories: 282, protein: 17, carbs: 36, fat: 8, fibre: 11, estimatedCost: "₹35",
+      whyItFits: "Immense 11g prebiotic fibre, live enzymes, and micronutrients for optimal digestion.",
       veg: true
     },
     {
       name: "Dal Tadka with Steamed Jeera Rice & Curd",
-      description: "1 generous bowl of yellow toor dal tempered with cumin, garlic, and ghee, served with 1 cup steamed rice and fresh dahi.",
-      calories: 430, protein: 20, carbs: 68, fat: 9, fibre: 7, estimatedCost: "₹65",
-      whyItFits: "Classic Indian comfort meal with balanced lentils and complementary grain amino acids.",
+      description: "Yellow toor and moong dal tempered with ghee, cumin, and garlic, paired with hot steamed jeera rice and fresh curd.",
+      portionBreakdown: "1 bowl dal (200g) + 1 bowl jeera rice (160g) + 1 bowl curd (120g)",
+      ingredients: [
+        { name: "Yellow Dal (cooked)", qty: "1 bowl (200g)", proteinG: 12, calories: 200 },
+        { name: "Steamed Jeera Rice", qty: "1 bowl (160g)", proteinG: 4, calories: 185 },
+        { name: "Fresh Curd (Dahi)", qty: "1 small bowl (120g)", proteinG: 4, calories: 75 },
+        { name: "Tadka Ghee & Cumin", qty: "1 tsp (5g)", proteinG: 0, calories: 45 }
+      ],
+      calories: 460, protein: 20, carbs: 68, fat: 11, fibre: 8, estimatedCost: "₹60",
+      whyItFits: "Wholesome, soothing comfort meal providing complementary grain and pulse proteins.",
       veg: true
     },
     {
       name: "Roasted Makhana & Chana Sattu Drink",
-      description: "40g roasted Bihar chana sattu stirred in chilled water with roasted cumin, black salt, and lemon, plus a bowl of crispy roasted fox nuts.",
-      calories: 260, protein: 19, carbs: 38, fat: 4, fibre: 10, estimatedCost: "₹35",
-      whyItFits: "Natural Indian superfood snack packed with 19g protein, gut-friendly fibre, and zero refined sugar.",
+      description: "Authentic roasted gram flour (sattu) dissolved in chilled water with roasted jeera, pink salt, and lime, paired with crunchy roasted fox nuts.",
+      portionBreakdown: "40g chana sattu powder + 30g roasted makhana (fox nuts)",
+      ingredients: [
+        { name: "Chana Sattu (roasted gram)", qty: "40g (2 tbsp)", proteinG: 10, calories: 155 },
+        { name: "Roasted Makhana (Fox nuts)", qty: "1 bowl (30g)", proteinG: 3, calories: 114 },
+        { name: "Lemon, Jeera & Black Salt", qty: "in 300ml water", proteinG: 0, calories: 8 }
+      ],
+      calories: 277, protein: 18, carbs: 42, fat: 4, fibre: 10, estimatedCost: "₹35",
+      whyItFits: "Ancient Indian stamina drink with high satiety, cooling effect, and low glycaemic index.",
       veg: true
     },
     {
       name: "Besan Chilla with Spiced Curd",
-      description: "2 savoury gram flour pancakes loaded with grated carrots and coriander, served with 100g fresh curd.",
-      calories: 310, protein: 18, carbs: 36, fat: 11, fibre: 6, estimatedCost: "₹45",
-      whyItFits: "Complex low-GI carbs from chickpea flour paired with gut-healthy probiotics.",
+      description: "Two spiced gram flour savoury pancakes made with grated carrot, onion, and ajwain, served with a bowl of cumin-spiced dahi.",
+      portionBreakdown: "60g besan (chickpea flour) + 120g fresh curd + grated veggies",
+      ingredients: [
+        { name: "Besan (Gram flour)", qty: "60g (makes 2 chillas)", proteinG: 13, calories: 230 },
+        { name: "Fresh Curd (Dahi)", qty: "1 small bowl (120g)", proteinG: 4, calories: 72 },
+        { name: "Grated Veggies (Carrot, Onion)", qty: "1/2 cup (50g)", proteinG: 1, calories: 20 },
+        { name: "Oil for pan", qty: "1 tsp (5g)", proteinG: 0, calories: 45 }
+      ],
+      calories: 367, protein: 18, carbs: 42, fat: 13, fibre: 7, estimatedCost: "₹45",
+      whyItFits: "Complex carbohydrate profile and gut-healthy probiotics that prevent evening cravings.",
       veg: true
     },
     {
       name: "Palak Paneer with 2 Phulkas",
-      description: "Fresh spinach puree simmered with garlic, cumin, and soft paneer cubes, served with 2 warm whole wheat rotis.",
-      calories: 410, protein: 22, carbs: 34, fat: 21, fibre: 7, estimatedCost: "₹95",
-      whyItFits: "Rich in iron, magnesium, calcium, and sustained-release casein protein.",
+      description: "Blanched spinach gravy cooked with garlic and aromatic garam masala, loaded with soft paneer cubes, served with 2 hot phulkas.",
+      portionBreakdown: "100g paneer + 150g palak puree + 2 whole wheat rotis (80g)",
+      ingredients: [
+        { name: "Fresh Paneer cubes", qty: "100g", proteinG: 18, calories: 265 },
+        { name: "Palak (Spinach) gravy", qty: "1 bowl (150g)", proteinG: 4, calories: 60 },
+        { name: "Whole Wheat Phulkas", qty: "2 rotis (80g)", proteinG: 6, calories: 160 }
+      ],
+      calories: 485, protein: 28, carbs: 40, fat: 22, fibre: 8, estimatedCost: "₹85",
+      whyItFits: "Rich in iron, magnesium, and slow-digesting casein protein that nourishes overnight.",
       veg: true
     }
   ];
@@ -5578,25 +5698,55 @@ function generateLocalDayPlan(ctx){
       mealType: "Breakfast",
       name: "Moong Dal Chilla with Mint Chutney & Paneer",
       description: "2 golden moong dal crepes stuffed with grated paneer and herbs",
-      calories: 340, protein: 25, carbs: 32, fat: 12, fibre: 7
+      portionBreakdown: "60g moong dal batter + 50g paneer + 2 tbsp chutney",
+      ingredients: [
+        { name: "Moong Dal Batter", qty: "60g dry (2 chillas)", proteinG: 14, calories: 200 },
+        { name: "Crumbled Paneer stuffing", qty: "50g", proteinG: 9, calories: 95 },
+        { name: "Mint & Coriander Chutney", qty: "2 tbsp (30g)", proteinG: 1, calories: 20 },
+        { name: "Ghee / Oil for greasing", qty: "1/2 tsp (2.5g)", proteinG: 0, calories: 22 }
+      ],
+      calories: 337, protein: 24, carbs: 34, fat: 12, fibre: 8
     },
     {
       mealType: "Lunch",
       name: "Soya Chunks Pulao with Cucumber Raita",
       description: "Spiced basmati rice with 50g soya chunks and a cool yogurt bowl",
-      calories: 440, protein: 36, carbs: 50, fat: 8, fibre: 9
+      portionBreakdown: "50g soya chunks + 1 bowl basmati rice (160g) + 1 bowl curd (150g)",
+      ingredients: [
+        { name: "Soya Chunks (dry / Nutrela)", qty: "50g dry (~26g P)", proteinG: 26, calories: 172 },
+        { name: "Basmati Rice (cooked)", qty: "1 bowl (160g)", proteinG: 4, calories: 190 },
+        { name: "Fresh Curd (Dahi) Raita", qty: "1 bowl (150g)", proteinG: 5, calories: 90 },
+        { name: "Green Peas & Onions", qty: "1/2 cup (50g)", proteinG: 2, calories: 35 }
+      ],
+      calories: 487, protein: 37, carbs: 58, fat: 8, fibre: 9
     },
     {
       mealType: "Evening snack",
-      name: "Sprouted Moong Chaat & Roasted Makhana",
-      description: "Steamed sprouts with lemon, pink salt, and roasted crunchy makhana",
-      calories: 220, protein: 14, carbs: 34, fat: 3, fibre: 8
+      name: "Roasted Makhana & Chana Sattu Drink",
+      description: "High-protein roasted gram flour drink with crispy roasted fox nuts",
+      portionBreakdown: "40g chana sattu + 30g roasted makhana (fox nuts)",
+      ingredients: [
+        { name: "Chana Sattu (roasted gram)", qty: "40g (2 tbsp)", proteinG: 10, calories: 155 },
+        { name: "Roasted Makhana (Fox nuts)", qty: "1 bowl (30g)", proteinG: 3, calories: 114 },
+        { name: "Lemon, Jeera & Pink Salt", qty: "in 300ml water", proteinG: 0, calories: 8 }
+      ],
+      calories: 277, protein: 18, carbs: 42, fat: 4, fibre: 10
     },
     {
       mealType: "Dinner",
-      name: isVeg ? "Paneer Bhurji with 2 Phulkas & Salad" : "Chicken Tikka with 2 Phulkas & Green Salad",
-      description: isVeg ? "Fresh paneer bhurji with 2 whole wheat rotis and tomato-onion salad" : "Grilled tender chicken tikka with 2 rotis and mint chutney",
-      calories: isVeg ? 450 : 420, protein: isVeg ? 28 : 42, carbs: 36, fat: isVeg ? 22 : 12, fibre: 6
+      name: isVeg ? "Paneer Bhurji with 2 Multigrain Rotis & Salad" : "Tandoori Chicken Tikka with 2 Phulkas & Salad",
+      description: isVeg ? "Fresh paneer bhurji with 2 whole wheat rotis and tomato-onion salad" : "Grilled tender chicken breast with 2 rotis and fresh mint salad",
+      portionBreakdown: isVeg ? "150g fresh paneer + 2 multigrain rotis (80g) + 1 bowl salad" : "180g chicken breast cubes + 2 whole wheat rotis (80g) + 1 bowl salad",
+      ingredients: isVeg ? [
+        { name: "Fresh / Low-fat Paneer", qty: "150g", proteinG: 27, calories: 280 },
+        { name: "Multigrain Rotis", qty: "2 phulkas (80g)", proteinG: 6, calories: 160 },
+        { name: "Onion, Tomato & Salad", qty: "1 bowl (120g)", proteinG: 1, calories: 35 }
+      ] : [
+        { name: "Chicken Breast Tikka", qty: "180g raw", proteinG: 43, calories: 220 },
+        { name: "Whole Wheat Rotis", qty: "2 phulkas (80g)", proteinG: 6, calories: 160 },
+        { name: "Garden Salad & Mint dip", qty: "1 bowl (120g)", proteinG: 1, calories: 35 }
+      ],
+      calories: isVeg ? 475 : 415, protein: isVeg ? 34 : 50, carbs: isVeg ? 38 : 36, fat: isVeg ? 18 : 12, fibre: isVeg ? 7 : 6
     }
   ];
   const dayTotals = sumMacros(meals.map(m=>({cal:m.calories,p:m.protein,c:m.carbs,fat:m.fat,fib:m.fibre})));
@@ -5627,36 +5777,203 @@ async function fetchEatNow(){
   }
   refreshSheet();
 }
+
 async function addEatSuggestion(idx){
   const o = STATE.eat.options[idx];
+  if(!o) return;
   const cal = Math.round(parseFloat(o.calories) || 0);
   const p = round1(parseFloat(o.protein) || 0);
   const c = round1(parseFloat(o.carbs) || 0);
   const fat = round1(parseFloat(o.fat) || 0);
   const fib = round1(parseFloat(o.fibre) || 0);
-  const macros = {cal, p, c, fat, fib, sug:0, sat:0, sod:0};
-  const meal = {date:STATE.selectedDate, time:nowTime(), mealType:suggestMealType(), items:[{foodId:null,name:o.name,qty:1,unit:"serving",macros,source:"ai_suggestion",confidence:null,isCustom:true,customNutrition:true}], totals:macros, source:"ai_suggestion", note:o.description, createdAt:Date.now()};
+  const totals = {cal, p, c, fat, fib, sug:0, sat:0, sod:0};
+
+  let items = [];
+  if(Array.isArray(o.ingredients) && o.ingredients.length > 0){
+    items = o.ingredients.map(ing => {
+      const qtyMatch = String(ing.qty).match(/([\d\.]+)\s*([a-zA-Z]+)?/);
+      const qtyNum = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
+      const unitStr = qtyMatch && qtyMatch[2] ? qtyMatch[2] : "serving";
+      return {
+        foodId: null,
+        name: ing.name,
+        qty: qtyNum,
+        unit: unitStr,
+        macros: {
+          cal: Math.round(ing.calories || (cal / o.ingredients.length)),
+          p: round1(ing.proteinG || (p / o.ingredients.length)),
+          c: round1(ing.carbsG || (c / o.ingredients.length)),
+          fat: round1(ing.fatG || (fat / o.ingredients.length)),
+          fib: round1(ing.fibreG || (fib / o.ingredients.length)),
+          sug: 0, sat: 0, sod: 0
+        },
+        source: "ai_suggestion",
+        isCustom: true,
+        customNutrition: true
+      };
+    });
+  } else {
+    items = [{
+      foodId: null,
+      name: o.name,
+      qty: 1,
+      unit: "serving",
+      macros: totals,
+      source: "ai_suggestion",
+      confidence: null,
+      isCustom: true,
+      customNutrition: true
+    }];
+  }
+
+  const meal = {
+    date: STATE.selectedDate,
+    time: nowTime(),
+    mealType: suggestMealType(),
+    items,
+    totals,
+    source: "ai_suggestion",
+    note: o.portionBreakdown ? `${o.description} (${o.portionBreakdown})` : o.description,
+    createdAt: Date.now()
+  };
   await StorageService.addToCollection("meals", meal);
-  closeSheet(); toast("Added to today's plan");
-  await loadMealsForDate(STATE.selectedDate); await refreshAllMealsCache(); goTo("home");
+  closeSheet();
+  toast(`Logged ${o.name} (${cal} kcal · ${p}g protein)`);
+  await loadMealsForDate(STATE.selectedDate);
+  await refreshAllMealsCache();
+  goTo("home");
 }
+
+function openEatSuggestionInDraft(idx){
+  const o = STATE.eat.options[idx];
+  if(!o) return;
+  const draft = ensureDraft();
+  draft.items = [];
+  draft.mealType = suggestMealType();
+  draft.note = o.name;
+
+  const cal = Math.round(parseFloat(o.calories) || 0);
+  const p = round1(parseFloat(o.protein) || 0);
+  const c = round1(parseFloat(o.carbs) || 0);
+  const fat = round1(parseFloat(o.fat) || 0);
+  const fib = round1(parseFloat(o.fibre) || 0);
+
+  if(Array.isArray(o.ingredients) && o.ingredients.length > 0){
+    o.ingredients.forEach(ing => {
+      const qtyMatch = String(ing.qty).match(/([\d\.]+)\s*([a-zA-Z]+)?/);
+      const qtyNum = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
+      const unitStr = qtyMatch && qtyMatch[2] ? qtyMatch[2] : "serving";
+      draft.items.push({
+        id: uid(),
+        foodId: null,
+        name: ing.name,
+        qty: qtyNum,
+        unit: unitStr,
+        macros: {
+          cal: Math.round(ing.calories || (cal / o.ingredients.length)),
+          p: round1(ing.proteinG || (p / o.ingredients.length)),
+          c: round1(ing.carbsG || (c / o.ingredients.length)),
+          fat: round1(ing.fatG || (fat / o.ingredients.length)),
+          fib: round1(ing.fibreG || (fib / o.ingredients.length)),
+          sug: 0, sat: 0, sod: 0
+        },
+        source: "ai_suggestion",
+        isCustom: true,
+        customNutrition: true
+      });
+    });
+  } else {
+    draft.items.push({
+      id: uid(),
+      foodId: null,
+      name: o.name,
+      qty: 1,
+      unit: "serving",
+      macros: { cal, p, c, fat, fib, sug: 0, sat: 0, sod: 0 },
+      source: "ai_suggestion",
+      isCustom: true,
+      customNutrition: true
+    });
+  }
+  openReviewDraftSheet();
+  toast("Loaded into draft — adjust portions & save");
+}
+
+function defaultTimeForMealType(mt){
+  switch(mt){
+    case "Breakfast": return "08:30";
+    case "Morning snack": return "11:00";
+    case "Lunch": return "13:30";
+    case "Evening snack": return "17:30";
+    case "Dinner": return "20:30";
+    default: return nowTime();
+  }
+}
+
 function renderEatPlan(){
   const e = STATE.eat;
-  if(e.status==="loadingPlan") return `<div class="analyzing-pulse" style="padding:16px"><div class="pulse-ring"></div><div class="muted small">Building tomorrow's plan…</div></div>`;
+  if(e.status==="loadingPlan") return `<div class="analyzing-pulse" style="padding:20px;text-align:center">
+    <div class="pulse-ring" style="width:36px;height:36px;margin:0 auto 10px"></div>
+    <div style="font-weight:700;font-size:15px;margin-bottom:4px">Building tomorrow's plan…</div>
+    <div class="muted small">Calculating 4 balanced meals with exact ingredient portions</div>
+  </div>`;
   if(e.status==="errorPlan") return `<div class="error-box">${esc(e.error)}</div><button class="btn btn-primary btn-block" style="margin-top:10px" onclick="fetchEatPlan()">Try again</button>`;
-  if(e.plan){
-    return `${e.plan.meals.map((m,idx)=>`<div class="card tight" style="margin-bottom:10px">
-        <div class="row"><b>${MEAL_ICON[m.mealType]||"🍽️"} ${esc(m.mealType)}</b><button class="link-btn" onclick="regenPlanMeal(${idx})">Regenerate</button></div>
-        <div style="font-weight:700;font-size:14px;margin:4px 0 2px">${esc(m.name)}</div>
-        <p class="small muted">${esc(m.description)}</p>
-        ${renderEstimatedNutritionCard({cal:m.calories,p:m.protein,c:m.carbs,fat:m.fat,fib:m.fibre}, "Estimated nutrition")}
-      </div>`).join("")}
-      ${renderEstimatedNutritionCard(e.plan.dayTotals, "Day Total Estimated Nutrition")}
-      <button class="btn btn-primary btn-block" style="margin-top:10px" onclick="addWholePlan()">Add this plan to tomorrow</button>`;
+  if(e.plan && e.plan.meals){
+    const tg = (STATE.profile && STATE.profile.targets) || { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 30 };
+    const dt = e.plan.dayTotals || {};
+    return `
+      <!-- Tomorrow's Plan Summary Header -->
+      <div class="card tight" style="margin-bottom:12px;background:var(--card-tint);border:1.5px solid var(--coral);border-radius:var(--radius-lg)">
+        <div class="row" style="margin-bottom:6px">
+          <span style="font-weight:800;font-size:14px;color:var(--ink)">🎯 Tomorrow's Planned Day Totals:</span>
+          <span class="badge" style="background:var(--coral-soft);color:var(--coral-dark);font-weight:700">4 Meals</span>
+        </div>
+        <div class="row" style="font-size:13px;font-weight:700;color:var(--coral-dark);gap:10px;flex-wrap:wrap">
+          <span>🔥 ${Math.round(dt.cal||dt.calories||0)} / ${tg.calories} kcal</span>
+          <span>🥩 ${round1(dt.p||dt.protein||0)} / ${tg.protein}g P</span>
+          <span>🍚 ${round1(dt.c||dt.carbs||0)}g C</span>
+          <span>🥑 ${round1(dt.fat||0)}g F</span>
+        </div>
+      </div>
+
+      <!-- Meal Cards with Exact Quantities -->
+      ${e.plan.meals.map((m,idx)=>`<div class="card tight" style="margin-bottom:12px;border:1.5px solid var(--line);box-shadow:0 2px 6px rgba(0,0,0,0.03)">
+          <div class="row">
+            <b style="font-size:14px;color:var(--coral-dark)">${MEAL_ICON[m.mealType]||"🍽️"} ${esc(m.mealType)}</b>
+            <button class="link-btn" style="font-size:12px" onclick="regenPlanMeal(${idx})">↻ Regenerate</button>
+          </div>
+          <div style="font-weight:800;font-size:15px;margin:4px 0 2px">${esc(m.name)}</div>
+          <p class="small muted" style="margin-bottom:6px">${esc(m.description)}</p>
+          
+          <!-- Exact Quantities: How much to take -->
+          ${renderPortionBreakdown(m)}
+
+          ${renderEstimatedNutritionCard({cal:m.calories,p:m.protein,c:m.carbs,fat:m.fat,fib:m.fibre}, "Estimated nutrition")}
+          
+          <div class="row" style="gap:8px;margin-top:10px">
+            <button class="btn btn-outline btn-sm" style="flex:1;font-weight:700;background:var(--card)" onclick="addPlanMealToTomorrow(${idx})">
+              ➕ Log just this meal
+            </button>
+            <button class="btn btn-outline btn-sm" style="flex:1;font-weight:700;background:var(--card)" onclick="openPlanMealInDraft(${idx})">
+              ✏️ Customize in draft
+            </button>
+          </div>
+        </div>`).join("")}
+
+      <!-- Bottom Plan Actions -->
+      <div class="stack" style="gap:8px;margin-top:12px">
+        <button class="btn btn-primary btn-block" onclick="addWholePlan()">
+          ➕ Add entire day (all 4 meals) to tomorrow
+        </button>
+        <button class="btn btn-outline btn-block" onclick="fetchEatPlan()">
+          ↻ Regenerate whole day plan
+        </button>
+      </div>`;
   }
-  return `<p class="muted small">Generates breakfast, lunch, an evening snack and dinner that fit your daily targets and preferences.</p>
-    <button class="btn btn-primary btn-block" onclick="fetchEatPlan()">Generate tomorrow's plan</button>`;
+  return `<p class="muted small" style="margin-bottom:12px">Generates an easy-to-follow breakfast, lunch, snack, and dinner with exact ingredient portions fitting your daily targets.</p>
+    <button class="btn btn-primary btn-block" onclick="fetchEatPlan()">✨ Generate tomorrow's full plan</button>`;
 }
+
 async function fetchEatPlan(){
   STATE.eat.status="loadingPlan"; refreshSheet();
   const p = STATE.profile || { targets: { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 30 }, goal: "maintain", diet: "balanced" };
@@ -5677,29 +5994,213 @@ async function fetchEatPlan(){
   STATE.eat.status = "plan";
   refreshSheet();
 }
+
 async function regenPlanMeal(idx){
-  const p = STATE.profile; const m = STATE.eat.plan.meals[idx];
+  const p = STATE.profile || {};
+  const m = STATE.eat.plan.meals[idx];
   const cuisine = (STATE.eat && STATE.eat.cuisine) || (p && p.cuisine) || "Indian";
   const ctx = {targets:p.targets, diet:p.diet, allergies:p.allergies, dislikes:p.dislikes, budget:p.budget, cuisine:cuisine, goal:p.goal, avoid:m.name};
-  const res = await RecommendationService.regenerateMeal(ctx, m.mealType);
-  if(!res.ok){ toast(res.message); return; }
-  STATE.eat.plan.meals[idx] = res.data;
+  try{
+    const res = await RecommendationService.regenerateMeal(ctx, m.mealType);
+    if(res && res.ok && res.data){
+      STATE.eat.plan.meals[idx] = res.data;
+      STATE.eat.plan.dayTotals = sumMacros(STATE.eat.plan.meals.map(mm=>({cal:mm.calories,p:mm.protein,c:mm.carbs,fat:mm.fat,fib:mm.fibre})));
+      refreshSheet();
+      return;
+    }
+  }catch(e){}
+  // local regeneration alternative
+  const localDay = generateLocalDayPlan(ctx);
+  const alt = localDay.meals.find(mm => mm.mealType === m.mealType);
+  if(alt) STATE.eat.plan.meals[idx] = alt;
   STATE.eat.plan.dayTotals = sumMacros(STATE.eat.plan.meals.map(mm=>({cal:mm.calories,p:mm.protein,c:mm.carbs,fat:mm.fat,fib:mm.fibre})));
   refreshSheet();
 }
+
+async function addPlanMealToTomorrow(idx){
+  if(!STATE.eat || !STATE.eat.plan || !STATE.eat.plan.meals) return;
+  const m = STATE.eat.plan.meals[idx];
+  if(!m) return;
+  const tomorrow = addDays(todayStr(), 1);
+  const cal = Math.round(parseFloat(m.calories) || 0);
+  const p = round1(parseFloat(m.protein) || 0);
+  const c = round1(parseFloat(m.carbs) || 0);
+  const fat = round1(parseFloat(m.fat) || 0);
+  const fib = round1(parseFloat(m.fibre) || 0);
+  const totals = {cal, p, c, fat, fib, sug:0, sat:0, sod:0};
+
+  let items = [];
+  if(Array.isArray(m.ingredients) && m.ingredients.length > 0){
+    items = m.ingredients.map(ing => {
+      const qtyMatch = String(ing.qty).match(/([\d\.]+)\s*([a-zA-Z]+)?/);
+      const qtyNum = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
+      const unitStr = qtyMatch && qtyMatch[2] ? qtyMatch[2] : "serving";
+      return {
+        foodId: null,
+        name: ing.name,
+        qty: qtyNum,
+        unit: unitStr,
+        macros: {
+          cal: Math.round(ing.calories || (cal / m.ingredients.length)),
+          p: round1(ing.proteinG || (p / m.ingredients.length)),
+          c: round1(ing.carbsG || (c / m.ingredients.length)),
+          fat: round1(ing.fatG || (fat / m.ingredients.length)),
+          fib: round1(ing.fibreG || (fib / m.ingredients.length)),
+          sug: 0, sat: 0, sod: 0
+        },
+        source: "ai_suggestion",
+        isCustom: true,
+        customNutrition: true
+      };
+    });
+  } else {
+    items = [{
+      foodId: null,
+      name: m.name,
+      qty: 1,
+      unit: "serving",
+      macros: totals,
+      source: "ai_suggestion",
+      isCustom: true,
+      customNutrition: true
+    }];
+  }
+
+  const meal = {
+    date: tomorrow,
+    time: defaultTimeForMealType(m.mealType),
+    mealType: m.mealType,
+    items,
+    totals,
+    source: "ai_suggestion",
+    note: m.portionBreakdown ? `${m.description} (${m.portionBreakdown})` : m.description,
+    createdAt: Date.now()
+  };
+  await StorageService.addToCollection("meals", meal);
+  toast(`Added ${m.mealType} to tomorrow!`);
+  await refreshAllMealsCache();
+}
+
+function openPlanMealInDraft(idx){
+  if(!STATE.eat || !STATE.eat.plan || !STATE.eat.plan.meals) return;
+  const m = STATE.eat.plan.meals[idx];
+  if(!m) return;
+  const tomorrow = addDays(todayStr(), 1);
+  const draft = ensureDraft();
+  draft.date = tomorrow;
+  draft.mealType = m.mealType;
+  draft.items = [];
+  draft.note = m.name;
+
+  const cal = Math.round(parseFloat(m.calories) || 0);
+  const p = round1(parseFloat(m.protein) || 0);
+  const c = round1(parseFloat(m.carbs) || 0);
+  const fat = round1(parseFloat(m.fat) || 0);
+  const fib = round1(parseFloat(m.fibre) || 0);
+
+  if(Array.isArray(m.ingredients) && m.ingredients.length > 0){
+    m.ingredients.forEach(ing => {
+      const qtyMatch = String(ing.qty).match(/([\d\.]+)\s*([a-zA-Z]+)?/);
+      const qtyNum = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
+      const unitStr = qtyMatch && qtyMatch[2] ? qtyMatch[2] : "serving";
+      draft.items.push({
+        id: uid(),
+        foodId: null,
+        name: ing.name,
+        qty: qtyNum,
+        unit: unitStr,
+        macros: {
+          cal: Math.round(ing.calories || (cal / m.ingredients.length)),
+          p: round1(ing.proteinG || (p / m.ingredients.length)),
+          c: round1(ing.carbsG || (c / m.ingredients.length)),
+          fat: round1(ing.fatG || (fat / m.ingredients.length)),
+          fib: round1(ing.fibreG || (fib / m.ingredients.length)),
+          sug: 0, sat: 0, sod: 0
+        },
+        source: "ai_suggestion",
+        isCustom: true,
+        customNutrition: true
+      });
+    });
+  } else {
+    draft.items.push({
+      id: uid(),
+      foodId: null,
+      name: m.name,
+      qty: 1,
+      unit: "serving",
+      macros: { cal, p, c, fat, fib, sug: 0, sat: 0, sod: 0 },
+      source: "ai_suggestion",
+      isCustom: true,
+      customNutrition: true
+    });
+  }
+  openReviewDraftSheet();
+  toast(`Loaded ${m.mealType} into draft — edit portions & save`);
+}
+
 async function addWholePlan(){
   const tomorrow = addDays(todayStr(),1);
+  if(!STATE.eat || !STATE.eat.plan || !STATE.eat.plan.meals) return;
   for(const m of STATE.eat.plan.meals){
     const cal = Math.round(parseFloat(m.calories) || 0);
     const p = round1(parseFloat(m.protein) || 0);
     const c = round1(parseFloat(m.carbs) || 0);
     const fat = round1(parseFloat(m.fat) || 0);
     const fib = round1(parseFloat(m.fibre) || 0);
-    const macros = {cal, p, c, fat, fib, sug:0, sat:0, sod:0};
-    const meal = {date:tomorrow, time:"", mealType:m.mealType, items:[{foodId:null,name:m.name,qty:1,unit:"serving",macros,source:"ai_suggestion",confidence:null,isCustom:true,customNutrition:true}], totals:macros, source:"ai_suggestion", note:m.description, createdAt:Date.now()};
+    const totals = {cal, p, c, fat, fib, sug:0, sat:0, sod:0};
+
+    let items = [];
+    if(Array.isArray(m.ingredients) && m.ingredients.length > 0){
+      items = m.ingredients.map(ing => {
+        const qtyMatch = String(ing.qty).match(/([\d\.]+)\s*([a-zA-Z]+)?/);
+        const qtyNum = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
+        const unitStr = qtyMatch && qtyMatch[2] ? qtyMatch[2] : "serving";
+        return {
+          foodId: null,
+          name: ing.name,
+          qty: qtyNum,
+          unit: unitStr,
+          macros: {
+            cal: Math.round(ing.calories || (cal / m.ingredients.length)),
+            p: round1(ing.proteinG || (p / m.ingredients.length)),
+            c: round1(ing.carbsG || (c / m.ingredients.length)),
+            fat: round1(ing.fatG || (fat / m.ingredients.length)),
+            fib: round1(ing.fibreG || (fib / m.ingredients.length)),
+            sug: 0, sat: 0, sod: 0
+          },
+          source: "ai_suggestion",
+          isCustom: true,
+          customNutrition: true
+        };
+      });
+    } else {
+      items = [{
+        foodId: null,
+        name: m.name,
+        qty: 1,
+        unit: "serving",
+        macros: totals,
+        source: "ai_suggestion",
+        isCustom: true,
+        customNutrition: true
+      }];
+    }
+
+    const meal = {
+      date: tomorrow,
+      time: defaultTimeForMealType(m.mealType),
+      mealType: m.mealType,
+      items,
+      totals,
+      source: "ai_suggestion",
+      note: m.portionBreakdown ? `${m.description} (${m.portionBreakdown})` : m.description,
+      createdAt: Date.now()
+    };
     await StorageService.addToCollection("meals", meal);
   }
-  closeSheet(); toast("Tomorrow's plan added");
+  closeSheet();
+  toast("Tomorrow's 4 meals added with exact portions!");
   await refreshAllMealsCache();
 }
 
