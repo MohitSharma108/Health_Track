@@ -1,5 +1,5 @@
 // Nourish PWA Offline Service Worker
-const CACHE_NAME = 'nourish-pwa-v3';
+const CACHE_NAME = 'nourish-pwa-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json'
