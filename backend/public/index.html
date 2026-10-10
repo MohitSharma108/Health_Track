@@ -2591,29 +2591,316 @@ async function saveCustomFood(){
    REVIEW DRAFT / SAVE MEAL
    ============================================================ */
 function openReviewDraftSheet(){ openSheet("reviewDraft", {}); }
+
 function sheetReviewDraftContent(){
   const d = ensureDraft();
   const items = d.items || [];
   const t = sumMacros(items.map(i=>i.macros));
   return `<div class="sheet-handle"></div>
-    <div class="sheet-head"><h3>Review meal</h3><button class="icon-btn" onclick="closeSheet()">${ICO.close}</button></div>
-    <div class="field"><label>Meal type</label><div class="chip-row">${MEAL_TYPES.map(mt=>`<span class="chip ${d.mealType===mt?'active':''}" onclick="ensureDraft().mealType='${mt}'; refreshSheet()">${MEAL_ICON[mt]} ${mt}</span>`).join("")}</div></div>
-    <div class="field"><label>Date</label><input type="date" value="${d.date}" onchange="ensureDraft().date=this.value; refreshSheet()"></div>
-    <div class="card tight">
-      ${items.length ? items.map((it,idx)=>`<div class="list-item">
-        <div class="thumb">🍽️</div>
-        <div style="flex:1;min-width:0"><div class="item-title">${esc(it.name)}</div><div class="item-sub">${it.qty} ${it.unit} · ${Math.round(it.macros.cal)} kcal</div></div>
-        <button class="icon-btn" style="width:30px;height:30px" onclick="removeDraftItem(${idx})">${ICO.close}</button>
-      </div>`).join("") : `<div class="muted small" style="padding:10px;text-align:center">No items added to this meal yet. Search and tap "+ Add" to add foods!</div>`}
+    <div class="sheet-head">
+      <h3>${d.editId ? '✏️ Edit Meal' : 'Review Meal'}</h3>
+      <button class="icon-btn" onclick="closeSheet()">${ICO.close}</button>
     </div>
+    <div class="field">
+      <label>Meal type</label>
+      <div class="chip-row">
+        ${MEAL_TYPES.map(mt=>`<span class="chip ${d.mealType===mt?'active':''}" onclick="ensureDraft().mealType='${mt}'; refreshSheet()">${MEAL_ICON[mt]} ${mt}</span>`).join("")}
+      </div>
+    </div>
+    <div class="field">
+      <label>Date</label>
+      <input type="date" value="${d.date}" onchange="ensureDraft().date=this.value; refreshSheet()">
+    </div>
+    
+    <div class="section-label" style="display:flex;justify-content:space-between;align-items:center;margin:12px 2px 6px">
+      <span>Foods in this meal (${items.length})</span>
+      <span class="muted small">Tap food or ✏️ to edit portion</span>
+    </div>
+
+    <div class="stack" style="gap:8px;margin-bottom:10px">
+      ${items.length ? items.map((it,idx)=>{
+        const f = it.foodId ? findFoodById(it.foodId) : null;
+        const cal = Math.round((it.macros||{}).cal || 0);
+        return `<div class="card tight" style="margin-bottom:0;border:1.5px solid var(--line);background:var(--card)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer" onclick="openEditDraftItemSheet(${idx})" title="Click to edit portion">
+              <div class="thumb" style="width:42px;height:42px;font-size:20px;flex:none">${f ? (MEAL_ICON[f.cat]||"🍽️") : "🍽️"}</div>
+              <div style="flex:1;min-width:0">
+                <div class="item-title" style="font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(it.name)}</div>
+                <div class="item-sub" style="font-size:12.5px;color:var(--coral);font-weight:700">
+                  ${it.qty} ${it.unit} · ${cal} kcal
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;flex:none">
+              <!-- Inline Quick Stepper -->
+              <div style="display:inline-flex;align-items:center;background:var(--card-tint);border-radius:var(--radius-pill);padding:2px 4px;border:1px solid var(--line)">
+                <button type="button" class="icon-btn" style="width:28px;height:28px;border:none;background:transparent;font-weight:800;font-size:16px;cursor:pointer" onclick="event.stopPropagation(); stepDraftItemQty(${idx}, -1)" title="Decrease portion">−</button>
+                <span style="font-weight:800;font-size:13px;padding:0 6px;min-width:28px;text-align:center">${it.qty}</span>
+                <button type="button" class="icon-btn" style="width:28px;height:28px;border:none;background:transparent;font-weight:800;font-size:16px;cursor:pointer" onclick="event.stopPropagation(); stepDraftItemQty(${idx}, 1)" title="Increase portion">+</button>
+              </div>
+              <button type="button" class="icon-btn" style="width:32px;height:32px;color:var(--coral)" onclick="event.stopPropagation(); openEditDraftItemSheet(${idx})" title="Edit portion">✏️</button>
+              <button type="button" class="icon-btn" style="width:32px;height:32px;color:var(--danger)" onclick="event.stopPropagation(); removeDraftItem(${idx})" title="Remove item">${ICO.close}</button>
+            </div>
+          </div>
+          <!-- Item macro details & edit link -->
+          <div class="row" style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--ink-faint);justify-content:flex-start;gap:8px">
+            <span>🥩 <b>${round1((it.macros||{}).p||0)}g</b> P</span>
+            <span>🍚 <b>${round1((it.macros||{}).c||0)}g</b> C</span>
+            <span>🥑 <b>${round1((it.macros||{}).fat||0)}g</b> F</span>
+            <span style="margin-left:auto;color:var(--coral);font-weight:600;cursor:pointer" onclick="openEditDraftItemSheet(${idx})">Edit portion →</span>
+          </div>
+        </div>`;
+      }).join("") : `<div class="card tight muted small" style="padding:16px;text-align:center;background:var(--card-tint);border-radius:var(--radius-md)">No items in this meal yet. Tap "+ Add food" below!</div>`}
+    </div>
+
+    <!-- Quick Actions to Add More Foods to This Meal -->
+    <div class="row" style="gap:8px;margin-bottom:12px">
+      <button type="button" class="btn btn-outline btn-sm" style="flex:1;background:var(--card);font-weight:700" onclick="closeSheet(); goTo('log')">
+        ➕ Add another food
+      </button>
+      <button type="button" class="btn btn-outline btn-sm" style="background:var(--card);font-weight:700" onclick="openQuickAddSheet(d.mealType)">
+        ⚡ Quick calories
+      </button>
+    </div>
+
     ${macroChipsRow(t)}
-    <div class="field" style="margin-top:10px"><label>Note (optional)</label><textarea oninput="ensureDraft().note=this.value">${esc(d.note||"")}</textarea></div>
-    <button class="btn btn-primary btn-block" onclick="saveDraftMeal()" ${!items.length ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>Save meal</button>`;
+    <div class="field" style="margin-top:10px">
+      <label>Note (optional)</label>
+      <textarea oninput="ensureDraft().note=this.value">${esc(d.note||"")}</textarea>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveDraftMeal()" ${!items.length ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
+      ${d.editId ? 'Save meal changes' : 'Save meal'}
+    </button>`;
 }
+
+function stepDraftItemQty(idx, delta){
+  const d = ensureDraft();
+  const it = d.items && d.items[idx];
+  if(!it) return;
+  const f = it.foodId ? findFoodById(it.foodId) : null;
+  const step = f ? qtyStep(it.unit) : 1;
+  const curQty = Number(it.qty) || 1;
+  const newQty = Math.max(step >= 1 ? 1 : 0.25, round1(curQty + (delta * step)));
+  if(newQty === curQty) return;
+  updateDraftItemQty(idx, newQty, it.unit);
+}
+
+function updateDraftItemQty(idx, newQty, unit){
+  const d = ensureDraft();
+  const it = d.items && d.items[idx];
+  if(!it) return;
+  const f = it.foodId ? findFoodById(it.foodId) : null;
+  const oldQty = Number(it.qty) || 1;
+  it.qty = newQty;
+  if(unit) it.unit = unit;
+
+  if(f){
+    it.macros = macrosForQty(f, it.qty, it.unit);
+  } else if(oldQty > 0) {
+    const ratio = newQty / oldQty;
+    it.macros = {
+      cal: Math.round(((it.macros||{}).cal || 0) * ratio),
+      p: round1(((it.macros||{}).p || 0) * ratio),
+      c: round1(((it.macros||{}).c || 0) * ratio),
+      fat: round1(((it.macros||{}).fat || 0) * ratio),
+      fib: round1(((it.macros||{}).fib || 0) * ratio)
+    };
+  }
+  refreshSheet();
+}
+
+function openEditDraftItemSheet(idx){
+  const d = ensureDraft();
+  const it = d.items && d.items[idx];
+  if(!it) return;
+  const f = it.foodId ? findFoodById(it.foodId) : null;
+  openSheet("editDraftItem", {
+    idx,
+    foodId: it.foodId || null,
+    name: it.name,
+    qty: it.qty,
+    unit: it.unit,
+    oldQty: it.qty,
+    cal: Math.round((it.macros||{}).cal || 0),
+    p: round1((it.macros||{}).p || 0),
+    c: round1((it.macros||{}).c || 0),
+    fat: round1((it.macros||{}).fat || 0),
+    fib: round1((it.macros||{}).fib || 0),
+    baseGrams: (f && f.serving) ? f.serving.grams : 100
+  });
+}
+
+function sheetEditDraftItemContent(props){
+  const d = ensureDraft();
+  const it = (d.items && d.items[props.idx]) || null;
+  if(!it){
+    return `<div class="sheet-handle"></div><div class="empty-state"><h4>Item not found</h4><button class="btn btn-primary" onclick="openReviewDraftSheet()">Back to meal</button></div>`;
+  }
+  const f = it.foodId ? findFoodById(it.foodId) : null;
+  const units = f ? unitOptions(f) : ["serving", "piece", "g", "bowl", "cup", "slice", "tbsp", "ml"];
+  const step = qtyStep(props.unit || it.unit);
+
+  let previewMacros = {cal: props.cal, p: props.p, c: props.c, fat: props.fat, fib: props.fib};
+  if(f){
+    previewMacros = macrosForQty(f, props.qty, props.unit);
+  } else {
+    const oldQty = Number(props.oldQty || it.qty) || 1;
+    const ratio = (Number(props.qty) || 1) / (oldQty > 0 ? oldQty : 1);
+    previewMacros = {
+      cal: Math.round(((it.macros||{}).cal || 0) * ratio),
+      p: round1(((it.macros||{}).p || 0) * ratio),
+      c: round1(((it.macros||{}).c || 0) * ratio),
+      fat: round1(((it.macros||{}).fat || 0) * ratio),
+      fib: round1(((it.macros||{}).fib || 0) * ratio)
+    };
+  }
+
+  return `<div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h3>✏️ Edit Portion</h3>
+      <button class="icon-btn" onclick="openReviewDraftSheet()">${ICO.close}</button>
+    </div>
+
+    <!-- Food Item Header -->
+    <div class="card tight" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--card-tint)">
+      <div class="thumb" style="width:40px;height:40px;font-size:22px;flex:none">${f ? (MEAL_ICON[f.cat]||"🍽️") : "🍽️"}</div>
+      <div style="flex:1;min-width:0">
+        ${!it.foodId ? `
+          <input type="text" value="${esc(props.name||it.name)}" oninput="STATE.sheet.props.name=this.value" placeholder="Food name" style="font-weight:700;font-size:15px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;width:100%">
+        ` : `
+          <div style="font-weight:800;font-size:16px">${esc(it.name)}</div>
+          <div class="muted small">${f && f.serving ? f.serving.label : ''}</div>
+        `}
+      </div>
+    </div>
+
+    <!-- Quantity Stepper & Unit -->
+    <div class="row" style="gap:10px;align-items:flex-end">
+      <div class="field" style="flex:1;margin-bottom:0">
+        <label>Quantity / Portion</label>
+        <div class="row" style="gap:6px">
+          <button type="button" class="icon-btn" style="flex:none" onclick="stepEditItemQty(${-step})" aria-label="Decrease">−</button>
+          <input type="number" step="${step}" min="0.1" value="${props.qty}" style="text-align:center;font-weight:700;font-size:16px" oninput="STATE.sheet.props.qty=Math.max(0.1, Number(this.value)||0); refreshSheet()">
+          <button type="button" class="icon-btn" style="flex:none" onclick="stepEditItemQty(${step})" aria-label="Increase">+</button>
+        </div>
+      </div>
+      <div class="field" style="flex:1;margin-bottom:0">
+        <label>Serving Unit</label>
+        <select style="font-weight:700" onchange="STATE.sheet.props.unit=this.value; refreshSheet()">
+          ${units.map(u=>`<option value="${u}" ${props.unit===u?'selected':''}>${u}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <!-- Multiplier quick chips -->
+    <div class="chip-row" style="margin:10px 0 12px">
+      ${[0.5, 1, 1.5, 2, 3].map(mult=>`
+        <span class="chip" onclick="setEditItemMultiplier(${mult})">×${mult}</span>
+      `).join("")}
+    </div>
+
+    <!-- Hand Portion Guide -->
+    <div style="margin:4px 0 12px">
+      <div class="row" style="margin-bottom:5px">
+        <span class="muted small" style="font-weight:700">Quick estimate:</span>
+        <span class="muted small">Visual portion</span>
+      </div>
+      <div class="chip-row" style="flex-wrap:wrap;gap:5px">
+        ${HAND_PORTIONS.map(hp=>`
+          <span class="chip" onclick="applyEditHandPortion(${hp.grams})" title="${hp.desc}">
+            ${hp.label} <span class="muted" style="font-size:11px">(${hp.grams}g)</span>
+          </span>
+        `).join("")}
+      </div>
+    </div>
+
+    <!-- Nutrition Preview Card -->
+    <div class="card tight" style="background:var(--card-tint);margin-bottom:14px">
+      <div class="row" style="margin-bottom:6px">
+        <b>Estimated nutrition</b>
+        <b style="color:var(--coral);font-size:15px">${Math.round(previewMacros.cal)} kcal</b>
+      </div>
+      <div class="row" style="gap:6px;flex-wrap:wrap">
+        <span class="chip" style="font-size:11.5px;padding:3px 8px">🥩 <b>${round1(previewMacros.p)}g</b> P</span>
+        <span class="chip" style="font-size:11.5px;padding:3px 8px">🍚 <b>${round1(previewMacros.c)}g</b> C</span>
+        <span class="chip" style="font-size:11.5px;padding:3px 8px">🥑 <b>${round1(previewMacros.fat)}g</b> F</span>
+        <span class="chip" style="font-size:11.5px;padding:3px 8px">🥦 <b>${round1(previewMacros.fib)}g</b> Fib</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="stack" style="gap:8px">
+      <button class="btn btn-primary btn-block" onclick="saveEditedDraftItem(${props.idx})">
+        Save portion changes
+      </button>
+      <div class="row" style="gap:8px">
+        <button class="btn btn-outline" style="flex:1" onclick="openReviewDraftSheet()">
+          Cancel
+        </button>
+        <button class="btn btn-danger" style="flex:1" onclick="removeDraftItem(${props.idx})">
+          Remove item
+        </button>
+      </div>
+    </div>`;
+}
+
+function stepEditItemQty(delta){
+  const props = STATE.sheet.props;
+  props.qty = Math.max(0.1, round1((Number(props.qty)||1) + delta));
+  refreshSheet();
+}
+
+function setEditItemMultiplier(mult){
+  const props = STATE.sheet.props;
+  const d = ensureDraft();
+  const it = d.items[props.idx];
+  const f = it && it.foodId ? findFoodById(it.foodId) : null;
+  const base = (f && f.serving) ? f.serving.qty : 1;
+  props.qty = round1(base * mult);
+  if(f && f.serving && f.serving.unit) props.unit = f.serving.unit;
+  refreshSheet();
+}
+
+function applyEditHandPortion(grams){
+  const props = STATE.sheet.props;
+  props.unit = "g";
+  props.qty = grams;
+  refreshSheet();
+}
+
+function saveEditedDraftItem(idx){
+  const props = STATE.sheet.props;
+  const d = ensureDraft();
+  const it = d.items && d.items[idx];
+  if(!it) { openReviewDraftSheet(); return; }
+
+  const f = it.foodId ? findFoodById(it.foodId) : null;
+  it.qty = Number(props.qty) || 1;
+  it.unit = props.unit || it.unit;
+  if(props.name && !it.foodId) it.name = props.name.trim();
+
+  if(f){
+    it.macros = macrosForQty(f, it.qty, it.unit);
+  } else {
+    const oldQty = Number(props.oldQty || it.qty) || 1;
+    const ratio = it.qty / (oldQty > 0 ? oldQty : 1);
+    it.macros = {
+      cal: Math.round(((it.macros||{}).cal || 0) * ratio),
+      p: round1(((it.macros||{}).p || 0) * ratio),
+      c: round1(((it.macros||{}).c || 0) * ratio),
+      fat: round1(((it.macros||{}).fat || 0) * ratio),
+      fib: round1(((it.macros||{}).fib || 0) * ratio)
+    };
+  }
+  toast(`Updated portion for ${it.name}`);
+  openReviewDraftSheet();
+}
+
 function removeDraftItem(idx){
   const d = ensureDraft();
   if(d.items) d.items.splice(idx,1);
-  if(!d.items || !d.items.length) closeSheet(); else refreshSheet();
+  if(!d.items || !d.items.length) closeSheet(); else openReviewDraftSheet();
 }
 async function saveDraftMeal(source){
   const d = ensureDraft();
@@ -2660,10 +2947,18 @@ function sheetMealDetailContent(props){
     <div class="sheet-head"><h3>${MEAL_ICON[m.mealType]} ${esc(m.mealType)}</h3><button class="icon-btn" onclick="closeSheet()">${ICO.close}</button></div>
     <div class="row small muted" style="margin-bottom:10px"><span>${prettyDate(m.date)} · ${prettyTime(m.time)}</span>${sourceBadge(m.source)}</div>
     ${m.imageUrl?`<img src="${esc(m.imageUrl)}" style="width:100%;border-radius:var(--radius-md);margin-bottom:12px;max-height:200px;object-fit:cover">`:""}
+    <div class="section-label" style="display:flex;justify-content:space-between;align-items:center;margin:10px 2px 6px">
+      <span>Logged items (${(m.items||[]).length})</span>
+      <span class="muted small" style="color:var(--coral);font-weight:600;cursor:pointer" onclick="editMealDraft('${m.id}')">✏️ Edit portions</span>
+    </div>
     <div class="card tight">
-      ${(m.items||[]).map(it=>`<div class="list-item">
+      ${(m.items||[]).map(it=>`<div class="list-item" style="cursor:pointer" onclick="editMealDraft('${m.id}')" title="Click to edit meal">
         <div class="thumb">🍽️</div>
-        <div style="flex:1"><div class="item-title">${esc(it.name)}</div><div class="item-sub">${it.qty} ${it.unit} · ${Math.round(it.macros.cal)} kcal</div></div>
+        <div style="flex:1;min-width:0">
+          <div class="item-title">${esc(it.name)}</div>
+          <div class="item-sub">${it.qty} ${it.unit} · ${Math.round(it.macros.cal)} kcal</div>
+        </div>
+        <span style="color:var(--coral);font-size:12px;font-weight:600;padding-right:4px">Edit ✏️</span>
         ${it.confidence!=null?confBadge(it.confidence):""}
       </div>`).join("")}
     </div>
@@ -2680,11 +2975,13 @@ function sheetMealDetailContent(props){
       </table>
     </div>
     ${m.note?`<p class="small muted" style="margin-top:8px">📝 ${esc(m.note)}</p>`:""}
-    <div class="choice-grid" style="margin-top:14px">
-      <button class="btn btn-ghost" onclick="duplicateMeal('${m.id}')">Duplicate</button>
-      <button class="btn btn-ghost" onclick="favouriteMeal('${m.id}')">${ICO.star} Save favourite</button>
-      <button class="btn btn-ghost" onclick="editMealDraft('${m.id}')">Edit</button>
-      <button class="btn btn-danger" onclick="deleteMeal('${m.id}')">Delete</button>
+    <button class="btn btn-primary btn-block" style="margin-top:14px;font-weight:700" onclick="editMealDraft('${m.id}')">
+      ✏️ Edit Meal & Portions
+    </button>
+    <div class="choice-grid c3" style="margin-top:8px">
+      <button class="btn btn-outline btn-sm" onclick="duplicateMeal('${m.id}')">Repeat today</button>
+      <button class="btn btn-outline btn-sm" onclick="favouriteMeal('${m.id}')">${ICO.star} Favourite</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteMeal('${m.id}')">Delete</button>
     </div>`;
 }
 async function duplicateMeal(mealId){
@@ -4734,6 +5031,7 @@ function renderSheetContent(){
   const sh = STATE.sheet; if(!sh) return "";
   const fns = {
     addFood: sheetAddFoodContent, customFood: sheetCustomFoodContent, reviewDraft: sheetReviewDraftContent,
+    editDraftItem: sheetEditDraftItemContent,
     mealDetail: sheetMealDetailContent, voiceLog: sheetVoiceLogContent, labelScan: sheetLabelScanContent,
     savedMeals: sheetSavedMealsContent, addIngredient: sheetAddIngredientContent, ingredientQty: sheetIngredientQtyContent,
     addMissingItem: sheetAddMissingItemContent, editScanItem: sheetEditScanItemContent, whatToEat: sheetWhatToEatContent,
