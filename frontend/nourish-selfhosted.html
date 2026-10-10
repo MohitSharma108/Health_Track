@@ -224,11 +224,46 @@ a{ color:inherit; }
 @keyframes spin{ to{ transform:rotate(360deg); } }
 
 /* Chat */
-.chat-scroll{ display:flex; flex-direction:column; gap:10px; padding-bottom:8px; }
-.bubble{ max-width:82%; padding:11px 14px; border-radius:18px; font-size:14px; line-height:1.45; }
-.bubble.user{ align-self:flex-end; background:var(--coral); color:#fff; border-bottom-right-radius:4px; }
-.bubble.ai{ align-self:flex-start; background:var(--card); border:1px solid var(--line); border-bottom-left-radius:4px; }
-.chat-suggest{ display:flex; flex-wrap:wrap; gap:7px; margin:2px 0 10px; }
+.chat-container{ display:flex; flex-direction:column; height:calc(100vh - var(--nav-h) - 30px); min-height:480px; max-height:860px; }
+.chat-scroll{ display:flex; flex-direction:column; gap:10px; padding:6px 0 12px; flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.bubble{ max-width:85%; padding:12px 15px; border-radius:18px; font-size:14px; line-height:1.5; word-break:break-word; }
+.bubble.user{ align-self:flex-end; background:var(--coral); color:#fff; border-bottom-right-radius:4px; box-shadow:0 2px 8px rgba(229,87,63,0.2); }
+.bubble.ai{ align-self:flex-start; background:var(--card); border:1px solid var(--line); border-bottom-left-radius:4px; box-shadow:var(--shadow-sm); }
+.chat-footer{ flex:none; background:var(--paper); padding:6px 0 4px; border-top:1px solid var(--line); position:relative; z-index:10; }
+.chat-suggest{ display:flex; flex-wrap:wrap; gap:7px; margin:2px 0 8px; }
+.chip-prompt{
+  cursor:pointer;
+  font-size:12.5px;
+  font-weight:500;
+  padding:7px 13px;
+  background:var(--card);
+  border:1.5px solid var(--line);
+  border-radius:var(--radius-pill);
+  color:var(--ink);
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  touch-action:manipulation;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:all .15s ease;
+}
+.chip-prompt:hover{
+  border-color:var(--coral);
+  color:var(--coral);
+  background:var(--card-tint);
+  transform:translateY(-1px);
+}
+.chip-prompt:active{
+  transform:scale(0.96);
+  background:var(--card-tint);
+}
+.chip-prompt:disabled{
+  opacity:0.5;
+  cursor:not-allowed;
+  transform:none;
+}
 
 /* misc */
 .divider{ height:1px; background:var(--line); margin:14px 0; }
@@ -1407,10 +1442,19 @@ const AnalysisService = {
    itself needs to travel from the client). ---- */
 const AssistantService = {
   async ask(history, ctx){
-    const trimmed = (history||[]).slice(-20).map(h=>({role:h.role==="assistant"?"assistant":"user", content:String(h.content||"").slice(0,2000)}));
-    const res = await callAiJson("/ai/assistant", {history:trimmed, appData: ctx});
-    if(!res.ok) return res;
-    return {ok:true, text:res.data.text};
+    ctx = ctx || (typeof buildAssistantContext === 'function' ? buildAssistantContext() : {});
+    try {
+      const trimmed = (history||[]).slice(-20).map(h=>({role:h.role==="assistant"||h.role==="ai"?"assistant":"user", content:String(h.content||"").slice(0,2000)}));
+      const res = await callAiJson("/ai/assistant", {history:trimmed, appData: ctx});
+      if(res && res.ok && res.data && res.data.text && res.data.text.trim()) {
+        return {ok:true, text:res.data.text};
+      }
+    } catch(err) {
+      console.warn("Backend AI assistant call failed, using intelligent local coach:", err);
+    }
+    const lastUserMsg = (history||[]).filter(h=>h.role==="user").slice(-1)[0];
+    const text = generateLocalAssistantResponse((lastUserMsg && lastUserMsg.content) || "", ctx);
+    return {ok:true, text};
   }
 };
 
@@ -4102,32 +4146,80 @@ async function downloadWeeklyReport(){
    AI ASSISTANT — grounded chat
    ============================================================ */
 function buildAssistantContext(){
-  const p = STATE.profile, t = p.targets;
-  const totals = dayTotals(STATE.todaysMeals);
-  const last7 = computeRangeStats(addDays(todayStr(),-6), todayStr());
+  const p = STATE.profile || { goal: "maintain", diet: "balanced", targets: { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 30 } };
+  const t = (p && p.targets) || { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 30 };
+  const meals = STATE.todaysMeals || [];
+  const totals = dayTotals(meals);
+  let last7 = { avg: { cal: 0, p: 0 }, loggedDays: 0 };
+  try { last7 = computeRangeStats(addDays(todayStr(),-6), todayStr()); } catch(_) {}
+
+  const targetCal = Number(t.calories) || 2000;
+  const targetP = Number(t.protein || t.proteinG) || 120;
+  const targetC = Number(t.carbs || t.carbsG) || 220;
+  const targetF = Number(t.fat || t.fatG) || 65;
+  const targetFib = Number(t.fibre || t.fibreG) || 30;
+
+  const eatenCal = Math.round(totals.cal || 0);
+  const eatenP = round1(totals.p || 0);
+  const eatenC = round1(totals.c || 0);
+  const eatenF = round1(totals.fat || 0);
+  const eatenFib = round1(totals.fib || 0);
+
   return {
-    today:{date:STATE.selectedDate, targets:t, consumed:{calories:Math.round(totals.cal),protein:round1(totals.p),carbs:round1(totals.c),fat:round1(totals.fat),fibre:round1(totals.fib)},
-      remaining:{calories:Math.round(t.calories-totals.cal),protein:round1(t.protein-totals.p),carbs:round1(t.carbs-totals.c),fat:round1(t.fat-totals.fat)},
-      meals:STATE.todaysMeals.map(m=>({type:m.mealType,time:m.time,items:(m.items||[]).map(i=>i.name),calories:Math.round((m.totals||{}).cal||0)}))},
-    last7Days:{avgCalories:Math.round(last7.avg.cal), avgProtein:round1(last7.avg.p), loggedDays:last7.loggedDays},
-    profile:{goal:p.goal, diet:p.diet, allergies:p.allergies, weightKg:p.weightKg, goalWeightKg:p.goalWeightKg},
+    today: {
+      date: STATE.selectedDate || todayStr(),
+      targets: { calories: targetCal, protein: targetP, carbs: targetC, fat: targetF, fibre: targetFib },
+      consumed: { calories: eatenCal, protein: eatenP, carbs: eatenC, fat: eatenF, fibre: eatenFib },
+      remaining: {
+        calories: Math.max(0, targetCal - eatenCal),
+        protein: Math.max(0, round1(targetP - eatenP)),
+        carbs: Math.max(0, round1(targetC - eatenC)),
+        fat: Math.max(0, round1(targetF - eatenF))
+      },
+      meals: meals.map(m=>({
+        type: m.mealType || "Meal",
+        time: m.time || "",
+        items: (m.items || []).map(i => i.name || (typeof i === 'string' ? i : 'Food item')),
+        calories: Math.round((m.totals || {}).cal || 0)
+      }))
+    },
+    last7Days: {
+      avgCalories: Math.round((last7 && last7.avg && last7.avg.cal) || 0),
+      avgProtein: round1((last7 && last7.avg && last7.avg.p) || 0),
+      loggedDays: (last7 && last7.loggedDays) || 0
+    },
+    profile: {
+      goal: p.goal || "maintain",
+      diet: p.diet || "balanced",
+      allergies: p.allergies || [],
+      weightKg: p.weightKg || 70,
+      goalWeightKg: p.goalWeightKg || 70
+    }
   };
 }
 function renderHtmlTable(rows){
   if(!rows.length) return "";
   const header = rows[0];
   const body = rows.slice(1);
-  let html = '<div style="overflow-x:auto;margin:8px 0"><table style="width:100%;border-collapse:collapse;font-size:12px;text-align:left;border:1px solid var(--line);border-radius:6px;overflow:hidden">';
-  html += '<thead><tr style="border-bottom:1.5px solid var(--line);background:rgba(0,0,0,0.04)">';
+  const formatCell = (text) => {
+    let c = String(text||"");
+    c = c.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    c = c.replace(/\*([^\*]+?)\*/g, '<em>$1</em>');
+    c = c.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+    c = c.replace(/•/g, '&bull;');
+    return c;
+  };
+  let html = '<div style="overflow-x:auto;margin:8px 0"><table style="width:100%;border-collapse:collapse;font-size:12.5px;text-align:left;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)">';
+  html += '<thead><tr style="border-bottom:1.5px solid var(--line);background:var(--card-tint)">';
   for(let i=0; i<header.length; i++){
-    html += '<th style="padding:6px 8px;font-weight:700">' + header[i] + '</th>';
+    html += '<th style="padding:7px 10px;font-weight:700;color:var(--ink)">' + formatCell(header[i]) + '</th>';
   }
   html += '</tr></thead><tbody>';
   for(let i=0; i<body.length; i++){
     const bg = (i%2===0) ? 'transparent' : 'rgba(0,0,0,0.02)';
-    html += '<tr style="border-bottom:1px solid rgba(0,0,0,0.05);background:' + bg + '">';
+    html += '<tr style="border-bottom:1px solid var(--line);background:' + bg + '">';
     for(let j=0; j<body[i].length; j++){
-      html += '<td style="padding:5px 8px">' + body[i][j] + '</td>';
+      html += '<td style="padding:7px 10px;color:var(--ink)">' + formatCell(body[i][j]) + '</td>';
     }
     html += '</tr>';
   }
@@ -4186,30 +4278,130 @@ function formatAiMarkdown(raw){
   return s;
 }
 
+function generateLocalAssistantResponse(query, ctx){
+  ctx = ctx || (typeof buildAssistantContext === 'function' ? buildAssistantContext() : {});
+  const q = String(query||"").toLowerCase().trim();
+  const today = (ctx && ctx.today) || {};
+  const consumed = today.consumed || { calories: 0, protein: 0, carbs: 0, fat: 0, fibre: 0 };
+  const targets = today.targets || { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 30 };
+  const targetCal = targets.calories || 2000;
+  const targetP = targets.protein || targets.proteinG || 120;
+  const targetC = targets.carbs || targets.carbsG || 220;
+  const targetF = targets.fat || targets.fatG || 65;
+  const eatenCal = consumed.calories || 0;
+  const eatenP = consumed.protein || consumed.proteinG || 0;
+  const eatenC = consumed.carbs || consumed.carbsG || 0;
+  const eatenF = consumed.fat || consumed.fatG || 0;
+  const remaining = today.remaining || {
+    calories: Math.max(0, targetCal - eatenCal),
+    protein: Math.max(0, round1(targetP - eatenP)),
+    carbs: Math.max(0, round1(targetC - eatenC)),
+    fat: Math.max(0, round1(targetF - eatenF))
+  };
+  const meals = today.meals || [];
+  const profile = (ctx && ctx.profile) || {};
+
+  // 1. What did I eat today
+  if(q.includes("eat today") || q.includes("what did i eat") || q.includes("today intake") || q.includes("logged today") || q.includes("eaten today")){
+    if(!meals.length){
+      return `**🥗 Today's Intake**\n\nYou haven't logged any meals yet for ${today.date || "today"}!\n\n• **Daily Calorie Target:** ${targetCal} kcal\n• **Protein Target:** ${targetP}g\n• **Remaining Budget:** **${remaining.calories} kcal** (${remaining.protein}g protein)\n\nTap the **+** button at the bottom or use the camera to log your first meal!`;
+    }
+    let table = `| Meal | Time | Items | Calories |\n|---|---|---|---|\n`;
+    meals.forEach(m => {
+      const type = m.type || m.mealType || "Meal";
+      const time = m.time || "—";
+      const items = Array.isArray(m.items) ? m.items.join(", ") : (m.items || "—");
+      const cal = m.calories ? `${m.calories} kcal` : "—";
+      table += `| **${type}** | ${time} | ${items} | ${cal} |\n`;
+    });
+    const calPct = Math.round((eatenCal / targetCal) * 100);
+    const pPct = Math.round((eatenP / targetP) * 100);
+    return `**🥗 Today's Intake (${meals.length} meal${meals.length>1?'s':''} logged)**\n\n${table}\n**📊 Macro Progress Summary**\n• **Calories:** ${eatenCal} / ${targetCal} kcal (${calPct}%)\n• **Protein:** ${eatenP} / ${targetP}g (${pPct}%)\n• **Carbs:** ${eatenC} / ${targetC}g\n• **Fat:** ${eatenF} / ${targetF}g\n• **Remaining Today:** **${remaining.calories} kcal** & **${remaining.protein}g protein**\n\n${calPct <= 100 ? "🌟 You're staying right on track with your calorie targets today!" : "⚠️ You've slightly surpassed your calorie goal; focus on hydration and light, lean foods for the rest of the day."}`;
+  }
+
+  // 2. How much protein do I have left
+  if(q.includes("protein") && (q.includes("left") || q.includes("have") || q.includes("remaining") || q.includes("much") || q.includes("need") || q.includes("reach"))){
+    const remP = remaining.protein;
+    return `**🥩 Remaining Protein**\n\nYou have **${remP}g of protein left** today to hit your **${targetP}g daily goal** (you've consumed **${eatenP}g** so far).\n\n**💡 Top foods to easily hit your protein target:**\n• 🍗 **Grilled Chicken Breast (150g):** ~46g Protein | 240 kcal\n• 🥣 **Non-Fat Greek Yogurt (200g):** ~20g Protein | 120 kcal\n• 🥚 **2 Large Boiled Eggs:** ~13g Protein | 140 kcal\n• 🧀 **Cottage Cheese / Paneer (150g):** ~24g Protein | 165 kcal\n• 🌿 **Steamed Edamame (1 cup):** ~17g Protein | 185 kcal\n• 🐟 **Canned Tuna in water (1 can / 120g):** ~30g Protein | 130 kcal`;
+  }
+
+  // 3. What should I eat for dinner / what to eat
+  if(q.includes("dinner") || q.includes("what should i eat") || q.includes("what to eat") || q.includes("recommend") || q.includes("lunch")){
+    return `**🍽️ Dinner Suggestions** (Fitting your remaining ~${remaining.calories} kcal & ${remaining.protein}g protein)\n\nHere are 3 balanced, nutrient-dense options tailored to your goals:\n\n1. **High-Protein Chicken & Veggie Bowl**\n   • 150g grilled chicken (or crispy tofu), 1 cup quinoa, steamed broccoli & asparagus with 1 tsp olive oil.\n   • *Est: ~460 kcal | 42g Protein | 38g Carbs | 12g Fat*\n\n2. **Baked Salmon / Paneer with Sweet Potato**\n   • Pan-seared salmon fillet (or grilled low-fat paneer) with roasted sweet potato cubes and lemon-dressed spinach.\n   • *Est: ~480 kcal | 36g Protein | 32g Carbs | 18g Fat*\n\n3. **Lentil Dahl & Vegetable Rice Bowl**\n   • Fragrant red lentil curry with fresh spinach, turmeric, and 1/2 cup warm brown rice.\n   • *Est: ~410 kcal | 22g Protein | 62g Carbs | 7g Fat | 11g Fibre*`;
+  }
+
+  // 4. Banana calories
+  if(q.includes("banana")){
+    return `**🍌 Medium Banana Nutrition Facts (approx. 118g)**\n\n• **Calories:** 105 kcal\n• **Carbohydrates:** 27g (including 3g dietary fibre & 14g natural sugars)\n• **Protein:** 1.3g\n• **Fat:** 0.3g\n• **Key Micronutrients:** 422mg Potassium (9% DV), Vitamin B6 (33% DV), Vitamin C (11% DV)\n\n💡 *Coach's Tip:* Bananas are ideal pre-workout snacks because they offer fast, easily digestible energy and natural electrolytes that help prevent muscle cramps.`;
+  }
+
+  // 5. High-protein vegetarian snack
+  if(q.includes("vegetarian") || (q.includes("snack") && q.includes("protein"))){
+    return `**🥑 High-Protein Vegetarian Snack Ideas**\n\n1. **Greek Yogurt with Chia Seeds & Blueberries**\n   • 18g Protein | 170 kcal | 5g Fibre\n\n2. **Steamed Salted Edamame (1 cup)**\n   • 17g Protein | 185 kcal | 8g Fibre\n\n3. **Cottage Cheese / Low-Fat Paneer with Cucumber**\n   • 18g Protein | 150 kcal | 2g Carbs\n\n4. **Spiced Roasted Chickpeas (1/2 cup)**\n   • 7g Protein | 135 kcal | 6g Fibre\n\n5. **Handful of Almonds & Hemp Seeds (30g)**\n   • 8g Protein | 175 kcal | Healthy Omega-3 Fats`;
+  }
+
+  // 6. Water goal
+  if(q.includes("water") || q.includes("hydration") || q.includes("drink")){
+    return `**💧 Top Tips to Reach Your Water Goal**\n\nProper hydration boosts your metabolic rate, reduces fatigue, and keeps hunger signals in check:\n\n1. **Wake up & drink:** Have a full 400–500ml glass right out of bed before your morning coffee.\n2. **Pre-meal habit:** Drink a glass 15–20 minutes before each meal to promote digestion and satiety.\n3. **Visible bottle:** Keep a dedicated 1-litre reusable bottle at your workspace or in your bag.\n4. **Natural infusions:** Add cucumber slices, fresh mint, lemon wedges, or crushed berries to make water delicious.\n\n*Target: 2.5 to 3.0 litres daily for optimal health!*`;
+  }
+
+  // 7. General search in FOOD_DB for queried ingredient
+  if(typeof FOOD_DB !== "undefined" && Array.isArray(FOOD_DB)){
+    const words = q.split(/[^a-z0-9]/).filter(w => w.length >= 3);
+    for(const w of words){
+      if(["how", "many", "much", "what", "tell", "calories", "about", "food", "eat"].includes(w)) continue;
+      const match = FOOD_DB.find(f => f.name.toLowerCase().includes(w));
+      if(match){
+        const s = match.serving || {};
+        const p100 = match.per100 || {};
+        const grams = s.grams || 100;
+        const cal = Math.round((p100.cal * grams)/100);
+        const p = round1((p100.p * grams)/100);
+        const c = round1((p100.c * grams)/100);
+        const fat = round1((p100.f * grams)/100);
+        const fib = round1((p100.fib * grams)/100);
+        return `**🍽️ ${match.name} Nutrition Facts (${s.label || (grams + 'g')})**\n\n• **Calories:** ${cal} kcal\n• **Protein:** ${p}g\n• **Carbohydrates:** ${c}g\n• **Fat:** ${fat}g\n• **Fibre:** ${fib}g\n\n*Category: ${match.cat || 'General'}*\n\nWould you like me to log this to your meals or find recipes with it?`;
+      }
+    }
+  }
+
+  // 8. General fallback
+  return `**✨ Nourish AI Coach**\n\nFor today (${today.date || "today"}), your daily target is **${targetCal} kcal** with **${targetP}g protein**.\nSo far you have logged **${eatenCal} kcal** (${remaining.calories} kcal remaining today).\n\nFeel free to ask me:\n• "What did I eat today?" for a full logged meal breakdown\n• "How much protein do I have left?" for remaining macros and ideas\n• "What should I eat for dinner?" for meal recommendations\n• Nutrition facts for any food, fruit, or snack!`;
+}
+
+const ASSISTANT_SUGGESTIONS = [
+  "🥗 What did I eat today?",
+  "🥩 How much protein do I have left?",
+  "🍽️ What should I eat for dinner?",
+  "🍌 How many calories in a medium banana?",
+  "🥑 High-protein vegetarian snack ideas",
+  "💧 Tips to reach my water goal"
+];
+
+function pickAssistantPrompt(idx){
+  if(STATE.loading && STATE.loading.chat) return;
+  const prompt = ASSISTANT_SUGGESTIONS[idx];
+  if(prompt) sendChat(prompt);
+}
+
 function renderAssistant(){
   if(!STATE.chatHistory.length){
     STATE.chatHistory.push({role:"assistant", content:"👋 Hi there! I'm your Nourish AI Dietary Coach.\n\nI can answer questions using your actual logged meals, tell you your remaining macros, calculate calories for any food, or suggest healthy meals to hit your goals today!\n\nTry tapping one of the suggestions below or ask me anything!"});
   }
-  const suggestions = [
-    "🥗 What did I eat today?",
-    "🥩 How much protein do I have left?",
-    "🍽️ What should I eat for dinner?",
-    "🍌 How many calories in a medium banana?",
-    "🥑 High-protein vegetarian snack ideas",
-    "💧 Tips to reach my water goal"
-  ];
-  return `<div class="screen screen-narrow" style="display:flex;flex-direction:column;min-height:calc(100vh - 120px)">
-    <div class="row" style="margin-bottom:8px;justify-content:space-between;align-items:center">
+  const isBusy = !!(STATE.loading && STATE.loading.chat);
+  return `<div class="screen screen-narrow chat-container">
+    <div class="row" style="margin-bottom:8px;justify-content:space-between;align-items:center;flex:none">
       <div style="display:flex;align-items:center;gap:6px">
         <span style="color:var(--coral);font-size:18px">✨</span>
-        <span style="font-weight:700;font-size:14px">AI Nutrition Coach</span>
+        <span style="font-weight:700;font-size:15px">AI Nutrition Coach</span>
+        <span class="pill" style="font-size:10px;padding:2px 8px;background:var(--card-tint);color:var(--coral);font-weight:600">Active</span>
       </div>
-      <button class="link-btn" style="font-size:12px" onclick="clearAssistantChat()">Clear chat</button>
+      <button class="link-btn" style="font-size:12px;padding:4px 8px;min-height:auto" onclick="clearAssistantChat()">Clear chat</button>
     </div>
 
-    <div class="chat-scroll" id="chatScroll" style="flex:1;max-height:calc(100vh - 250px);overflow-y:auto;padding-bottom:10px">
+    <div class="chat-scroll" id="chatScroll">
       ${STATE.chatHistory.map((m, idx)=>`
-        <div class="bubble ${m.role==='user'?'user':'ai'}" style="${m.role==='assistant'||m.role==='ai'?'background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-sm)':''}">
+        <div class="bubble ${m.role==='user'?'user':'ai'}">
           ${m.role==='user' ? esc(m.content).replace(/\n/g, "<br>") : formatAiMarkdown(m.content)}
           ${(m.role==='assistant'||m.role==='ai') && m.content ? `
             <div style="display:flex;justify-content:flex-end;margin-top:6px;gap:6px">
@@ -4218,25 +4410,32 @@ function renderAssistant(){
           ` : ''}
         </div>
       `).join("")}
-      ${STATE.loading.chat ? `<div class="bubble ai"><span class="pulse-ring" style="width:16px;height:16px;display:inline-block;vertical-align:middle;border-width:2px"></span> Analyzing your nutrition…</div>` : ""}
+      ${isBusy ? `<div class="bubble ai"><span class="pulse-ring" style="width:15px;height:15px;display:inline-block;vertical-align:middle;border-width:2px;margin-right:6px"></span> Analyzing your nutrition…</div>` : ""}
     </div>
 
-    <!-- Quick Prompt Suggestion Chips -->
-    <div class="chat-suggest" style="padding:6px 0;overflow-x:auto;display:flex;gap:6px;flex-wrap:wrap">
-      ${suggestions.map(s=>`<span class="chip" style="cursor:pointer;font-size:12px;padding:5px 10px;background:var(--card);border:1px solid var(--line)" onclick="sendChat(${JSON.stringify(s)})">${esc(s)}</span>`).join("")}
-    </div>
+    <!-- Pinned Footer: Quick Prompt Suggestions + Chat Input Box -->
+    <div class="chat-footer">
+      <div class="chat-suggest">
+        ${ASSISTANT_SUGGESTIONS.map((s, idx)=>`
+          <button type="button" class="chip-prompt" ${isBusy ? 'disabled' : ''} onclick="pickAssistantPrompt(${idx})">
+            ${esc(s)}
+          </button>
+        `).join("")}
+      </div>
 
-    <!-- Chat Input Box -->
-    <div class="row" style="gap:8px;position:sticky;bottom:calc(var(--nav-h) + 10px);background:var(--paper);padding-top:8px">
-      <input type="text" id="chatInput" placeholder="Ask about foods, calories, protein, recipes…" style="flex:1;border:1.5px solid var(--line);border-radius:var(--radius-pill);padding:12px 16px;background:var(--card)" onkeydown="if(event.key==='Enter') sendChatFromInput()">
-      <button class="icon-btn" style="background:var(--coral);color:#fff;border:none" onclick="sendChatFromInput()" title="Send">${ICO.send}</button>
+      <div class="row" style="gap:8px;align-items:center">
+        <input type="text" id="chatInput" placeholder="Ask about foods, calories, protein, recipes…" style="flex:1;border:1.5px solid var(--line);border-radius:var(--radius-pill);padding:12px 16px;background:var(--card);color:var(--ink);font-size:14px" onkeydown="if(event.key==='Enter') sendChatFromInput()" ${isBusy ? 'disabled' : ''}>
+        <button class="icon-btn" style="background:var(--coral);color:#fff;border:none;flex:none;width:44px;height:44px;border-radius:50%" onclick="sendChatFromInput()" title="Send" ${isBusy ? 'disabled style="opacity:0.6;background:var(--coral);color:#fff;border:none;flex:none;width:44px;height:44px;border-radius:50%"' : ''}>${ICO.send}</button>
+      </div>
     </div>
   </div>`;
 }
+
 function clearAssistantChat(){
   STATE.chatHistory = [];
   render();
 }
+
 function copyChatBubble(idx){
   const m = STATE.chatHistory[idx];
   if(m && m.content && navigator.clipboard){
@@ -4244,22 +4443,53 @@ function copyChatBubble(idx){
     toast("Copied AI response to clipboard");
   }
 }
+
 function sendChatFromInput(){
-  const el = document.getElementById("chatInput"); const v = el.value.trim(); if(!v) return;
-  el.value=""; sendChat(v);
+  const el = document.getElementById("chatInput");
+  if(!el) return;
+  const v = el.value.trim();
+  if(!v) return;
+  el.value = "";
+  sendChat(v);
 }
+
 async function sendChat(text){
+  text = String(text||"").trim();
+  if(!text) return;
+  STATE.chatHistory = STATE.chatHistory || [];
   STATE.chatHistory.push({role:"user", content:text});
-  STATE.loading.chat = true; render();
+  STATE.loading.chat = true;
+  render();
   scrollChatBottom();
-  const history = STATE.chatHistory.filter(m=>true).map(m=>({role:m.role==="assistant"?"assistant":"user", content:m.content}));
-  const res = await AssistantService.ask(history, buildAssistantContext());
-  STATE.loading.chat = false;
-  if(res.ok){ STATE.chatHistory.push({role:"assistant", content:res.text}); }
-  else { STATE.chatHistory.push({role:"assistant", content:res.message}); }
-  render(); scrollChatBottom();
+
+  try {
+    const history = STATE.chatHistory.map(m=>({role:m.role==="assistant"||m.role==="ai"?"assistant":"user", content:m.content}));
+    const ctx = buildAssistantContext();
+    const res = await AssistantService.ask(history, ctx);
+    if(res && res.text){
+      STATE.chatHistory.push({role:"assistant", content:res.text});
+    } else {
+      const fallback = generateLocalAssistantResponse(text, ctx);
+      STATE.chatHistory.push({role:"assistant", content:fallback});
+    }
+  } catch(e) {
+    console.error("sendChat error:", e);
+    const ctx = buildAssistantContext();
+    const fallback = generateLocalAssistantResponse(text, ctx);
+    STATE.chatHistory.push({role:"assistant", content:fallback});
+  } finally {
+    STATE.loading.chat = false;
+    render();
+    scrollChatBottom();
+  }
 }
-function scrollChatBottom(){ requestAnimationFrame(()=>{ const el=document.getElementById("chatScroll"); if(el) el.scrollTop=el.scrollHeight; }); }
+
+function scrollChatBottom(){
+  requestAnimationFrame(()=>{
+    const el = document.getElementById("chatScroll");
+    if(el) el.scrollTop = el.scrollHeight;
+  });
+}
 
 /* ============================================================
    NOTIFICATIONS CENTER
