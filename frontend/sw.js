@@ -1,5 +1,5 @@
 // Nourish PWA Offline Service Worker
-const CACHE_NAME = 'nourish-pwa-v1';
+const CACHE_NAME = 'nourish-pwa-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json'
@@ -31,6 +31,22 @@ self.addEventListener('fetch', (event) => {
   // Only cache GET requests that are not API calls or uploads
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/')) {
+    return;
+  }
+
+  // Network-First for HTML navigation so users ALWAYS get the latest code immediately
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request).then((res) => res || caches.match('/')))
+    );
     return;
   }
 
