@@ -150,7 +150,7 @@ router.post(
       allergies: body.allergies || (profile && profile.allergies) || [],
       dislikes: body.dislikes || (profile && profile.dislikes) || [],
       budget: body.budget || (profile && profile.budget) || 'medium',
-      cuisine: body.cuisine || (profile && profile.cuisine) || [],
+      cuisine: body.cuisine || (profile && profile.cuisine) || 'Indian',
       goal: body.goal || (profile && profile.goal) || 'maintain',
       mealsPerDay: body.mealsPerDay || (profile && profile.mealsPerDay) || 3,
     };
@@ -162,7 +162,7 @@ router.post(
 
 router.post(
   '/regenerate-meal',
-  validate({ body: z.object({ mealType: z.string(), avoid: z.string().optional(), targets: z.any().optional(), diet: z.string().optional() }) }),
+  validate({ body: z.object({ mealType: z.string(), avoid: z.string().optional(), targets: z.any().optional(), diet: z.string().optional(), cuisine: z.string().optional() }) }),
   asyncHandler(async (req, res) => {
     await assertAiEnabled(req.userId);
     let profile = null;
@@ -184,7 +184,7 @@ router.post(
       allergies: (profile && profile.allergies) || [],
       dislikes: (profile && profile.dislikes) || [],
       budget: (profile && profile.budget) || 'medium',
-      cuisine: (profile && profile.cuisine) || [],
+      cuisine: body.cuisine || (profile && profile.cuisine) || 'Indian',
       goal: (profile && profile.goal) || 'maintain',
       avoid: req.body.avoid,
     };
@@ -242,6 +242,7 @@ async function buildEatContext(userId, clientCtx = {}) {
   }
   if (clientCtx && clientCtx.diet) p.diet = clientCtx.diet;
   if (clientCtx && clientCtx.goal) p.goal = clientCtx.goal;
+  if (clientCtx && clientCtx.cuisine) p.cuisine = clientCtx.cuisine;
 
   const remaining = (clientCtx && clientCtx.remaining) || {
     calories: Math.max(0, Math.round(g.calories - (totals.calories || 0))),
@@ -259,7 +260,7 @@ async function buildEatContext(userId, clientCtx = {}) {
     allergies: p.allergies || [],
     dislikes: p.dislikes || [],
     budget: p.budget || 'medium',
-    cuisine: p.cuisine || [],
+    cuisine: p.cuisine || 'Indian',
     goal: p.goal || 'maintain',
   };
 }

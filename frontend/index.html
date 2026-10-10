@@ -722,7 +722,20 @@ const FOOD_DB = [
 {id:"lentils_boiled",name:"Lentils, boiled",cat:"Legumes",per100:{cal:116,p:9,c:20,f:0.4,fib:7.9,sug:1.8,sat:0.1,sod:2},serving:{qty:100,unit:"g",grams:100,label:"100g"}},
 {id:"tofu",name:"Tofu, firm",cat:"Legumes",per100:{cal:144,p:15.8,c:2.8,f:8.7,fib:2.3,sug:0.6,sat:1.3,sod:12},serving:{qty:100,unit:"g",grams:100,label:"100g"}},
 {id:"soy_chunks_cooked",name:"Soy chunks, cooked",cat:"Legumes",per100:{cal:116,p:16.5,c:9,f:0.6,fib:5,sug:2,sat:0.1,sod:280},serving:{qty:100,unit:"g",grams:100,label:"100g"}},
+{id:"soya_chunks_dry",name:"Soya chunks (dry / raw)",cat:"Legumes",per100:{cal:345,p:52,c:33,f:0.5,fib:13,sug:7,sat:0.1,sod:20},serving:{qty:50,unit:"g",grams:50,label:"50g (~26g protein)"}},
+{id:"moong_dal_chilla",name:"Moong dal chilla",cat:"Legumes",per100:{cal:170,p:11.2,c:22.5,f:4.1,fib:4.5,sug:1.2,sat:0.8,sod:260},serving:{qty:1,unit:"piece",grams:80,label:"1 chilla (~80g)"}},
+{id:"besan_chilla",name:"Besan chilla",cat:"Legumes",per100:{cal:185,p:10.5,c:24,f:5.2,fib:5.1,sug:2.0,sat:0.9,sod:280},serving:{qty:1,unit:"piece",grams:80,label:"1 chilla (~80g)"}},
+{id:"kala_chana_boiled",name:"Kala chana (black chickpeas), boiled",cat:"Legumes",per100:{cal:160,p:9.5,c:25,f:2.4,fib:8.5,sug:3.5,sat:0.3,sod:15},serving:{qty:1,unit:"bowl",grams:150,label:"1 bowl (~150g)"}},
+{id:"sprouts_salad",name:"Moong sprouts salad / chaat",cat:"Legumes",per100:{cal:95,p:6.5,c:15,f:1.1,fib:4.8,sug:2.8,sat:0.2,sod:120},serving:{qty:1,unit:"bowl",grams:150,label:"1 bowl (~150g)"}},
+{id:"sattu_chana",name:"Chana sattu (roasted gram flour)",cat:"Legumes",per100:{cal:390,p:25.5,c:56,f:6.2,fib:16.5,sug:2.5,sat:1.1,sod:30},serving:{qty:40,unit:"g",grams:40,label:"40g (~2 tbsp)"}},
 {id:"paneer",name:"Paneer",cat:"Dairy",per100:{cal:265,p:18.3,c:3.6,f:20.8,fib:0,sug:2.6,sat:13,sod:22},serving:{qty:100,unit:"g",grams:100,label:"100g"}},
+{id:"paneer_bhurji",name:"Paneer bhurji",cat:"Dairy",per100:{cal:215,p:15.5,c:4.2,f:15.2,fib:1.2,sug:2.1,sat:8.5,sod:290},serving:{qty:1,unit:"bowl",grams:150,label:"1 bowl (~150g)"}},
+{id:"palak_paneer",name:"Palak paneer",cat:"Dairy",per100:{cal:145,p:7.8,c:4.5,f:11,fib:2.4,sug:1.8,sat:5.5,sod:320},serving:{qty:1,unit:"bowl",grams:200,label:"1 bowl (~200g)"}},
+{id:"egg_bhurji",name:"Egg bhurji (Indian scrambled eggs)",cat:"Protein",per100:{cal:175,p:12.8,c:3.5,f:12.2,fib:0.8,sug:1.4,sat:3.2,sod:320},serving:{qty:1,unit:"bowl",grams:150,label:"1 bowl (~150g)"}},
+{id:"chicken_tikka",name:"Chicken tikka (roasted/grilled)",cat:"Protein",per100:{cal:180,p:26,c:3.2,f:6.8,fib:0.8,sug:1.2,sat:1.8,sod:340},serving:{qty:1,unit:"serving",grams:150,label:"1 plate (~150g)"}},
+{id:"soya_pulao",name:"Soya chunks pulao",cat:"Grains",per100:{cal:165,p:9.8,c:24,f:3.5,fib:3.2,sug:1.1,sat:0.6,sod:290},serving:{qty:1,unit:"bowl",grams:200,label:"1 bowl (~200g)"}},
+{id:"khichdi_moong",name:"Moong dal khichdi",cat:"Grains",per100:{cal:125,p:4.6,c:22,f:2.1,fib:2.5,sug:0.8,sat:0.6,sod:240},serving:{qty:1,unit:"bowl",grams:200,label:"1 bowl (~200g)"}},
+{id:"makhana_roasted",name:"Roasted makhana (fox nuts)",cat:"Snacks",per100:{cal:380,p:9.7,c:76,f:3.8,fib:7.6,sug:0.5,sat:0.6,sod:180},serving:{qty:30,unit:"g",grams:30,label:"30g (~1 bowl)"}},
 
 {id:"milk_whole",name:"Milk, whole",cat:"Dairy",per100:{cal:61,p:3.2,c:4.8,f:3.3,fib:0,sug:5.1,sat:1.9,sod:43},serving:{qty:1,unit:"cup",grams:240,label:"1 cup (~240ml)"}},
 {id:"milk_skim",name:"Milk, skim",cat:"Dairy",per100:{cal:34,p:3.4,c:5,f:0.1,fib:0,sug:5,sat:0.1,sod:44},serving:{qty:1,unit:"cup",grams:240,label:"1 cup (~240ml)"}},
@@ -1295,6 +1308,8 @@ function feItemToBe(it){
   const out = {name:it.name, qty:it.qty, unit:it.unit, source:it.source||"manual"};
   if(it.confidence!=null) out.confidence = it.confidence;
   if(it.foodId){ out.foodId = it.foodId; }
+  if(it.isCustom){ out.isCustom = true; }
+  if(it.customNutrition){ out.customNutrition = true; }
   const m = it.macros||{};
   out.calories = Math.round(m.cal||0);
   out.proteinG = round1(m.p||0);
@@ -2648,31 +2663,74 @@ function renderDraftBar(){
   </div>`;
 }
 function openAddFoodSheet(foodId){
-  openSheet("addFood", {foodId, qty:findFoodById(foodId).serving.qty, unit:findFoodById(foodId).serving.unit});
+  const f = findFoodById(foodId);
+  openSheet("addFood", {
+    foodId,
+    qty: (f && f.serving && f.serving.qty) || 1,
+    unit: (f && f.serving && f.serving.unit) || "serving",
+    customMacros: null
+  });
 }
 function sheetAddFoodContent(props){
   const f = findFoodById(props.foodId);
-  const m = macrosForQty(f, props.qty, props.unit);
+  if(!f) return `<div class="sheet-handle"></div><div class="empty-state"><h4>Food not found</h4><button class="btn btn-primary" onclick="closeSheet()">Back</button></div>`;
+  const stdMacros = macrosForQty(f, props.qty, props.unit);
+  const isCustomized = !!props.customMacros;
+  const m = isCustomized ? Object.assign({}, stdMacros, props.customMacros) : stdMacros;
   const units = unitOptions(f);
+  if(!units.includes("g")) units.push("g");
   const step = qtyStep(props.unit);
+  const isGramUnit = props.unit === "g";
+
   return `<div class="sheet-handle"></div>
-    <div class="sheet-head"><h3>${esc(f.name)}</h3><button class="icon-btn" onclick="closeSheet()">${ICO.close}</button></div>
-    <div class="row" style="gap:10px">
-      <div class="field" style="flex:1">
-        <label>Quantity</label>
+    <div class="sheet-head">
+      <h3>${esc(f.name)}</h3>
+      <button class="icon-btn" onclick="closeSheet()">${ICO.close}</button>
+    </div>
+
+    <!-- Portion & Grams Section -->
+    <div class="row" style="gap:10px;align-items:flex-end">
+      <div class="field" style="flex:1;margin-bottom:0">
+        <label>Quantity / Portion</label>
         <div class="row" style="gap:6px">
-          <button class="icon-btn" style="flex:none" onclick="stepQty(${-step})" aria-label="Decrease">−</button>
-          <input type="number" step="${step}" value="${props.qty}" style="text-align:center" oninput="STATE.sheet.props.qty=Number(this.value)||0; refreshSheet()">
-          <button class="icon-btn" style="flex:none" onclick="stepQty(${step})" aria-label="Increase">+</button>
+          <button type="button" class="icon-btn" style="flex:none" onclick="stepQty(${-step})" aria-label="Decrease">−</button>
+          <input type="number" step="${step}" min="0.1" value="${props.qty}" style="text-align:center;font-weight:700;font-size:16px" oninput="setAddFoodQtyInput(this.value)">
+          <button type="button" class="icon-btn" style="flex:none" onclick="stepQty(${step})" aria-label="Increase">+</button>
         </div>
       </div>
-      <div class="field" style="flex:1"><label>Unit</label><select onchange="STATE.sheet.props.unit=this.value; refreshSheet()">${units.map(u=>`<option value="${u}" ${props.unit===u?'selected':''}>${u}</option>`).join("")}</select></div>
+      <div class="field" style="flex:1;margin-bottom:0">
+        <label>Serving Unit</label>
+        <select style="font-weight:700" onchange="setAddFoodUnitSelect(this.value)">
+          ${units.map(u=>`<option value="${u}" ${props.unit===u?'selected':''}>${u}</option>`).join("")}
+        </select>
+      </div>
     </div>
-    <div class="chip-row" style="margin:-6px 0 10px">${[0.5,1,1.5,2].map(mult=>`<span class="chip" onclick="setQtyMultiplier(${mult})">×${mult}</span>`).join("")}</div>
+
+    <!-- Quick Portion Chips (Grams and Multipliers) -->
+    <div class="row" style="align-items:center;justify-content:space-between;margin:10px 0 6px">
+      <div class="chip-row" style="flex-wrap:wrap;gap:5px;flex:1">
+        ${isGramUnit ? [50, 100, 150, 200, 250, 300].map(gm => `
+          <span class="chip ${props.qty===gm?'active':''}" onclick="setAddFoodGrams(${gm})">${gm}g</span>
+        `).join("") : [0.5, 1, 1.5, 2, 3].map(mult => `
+          <span class="chip" onclick="setQtyMultiplier(${mult})">×${mult}</span>
+        `).join("")}
+      </div>
+      ${!isGramUnit ? `
+        <button type="button" class="link-btn" style="font-size:11.5px;color:var(--coral);font-weight:700;white-space:nowrap;margin-left:8px" onclick="setAddFoodGrams(100)">
+          ⚖️ Switch to Grams (g)
+        </button>
+      ` : `
+        <button type="button" class="link-btn" style="font-size:11.5px;color:var(--coral);font-weight:700;white-space:nowrap;margin-left:8px" onclick="setAddFoodUnitSelect('${(f.serving && f.serving.unit)||'serving'}')">
+          🍽️ Switch to ${(f.serving && f.serving.unit)||'serving'}
+        </button>
+      `}
+    </div>
+
+    <!-- Visual Portion Guide -->
     <div style="margin:4px 0 12px">
       <div class="row" style="margin-bottom:5px">
-        <span class="muted small" style="font-weight:700">Visual portion guide:</span>
-        <span class="muted small">Estimate without a scale</span>
+        <span class="muted small" style="font-weight:700">Visual estimate:</span>
+        <span class="muted small">Quick portion</span>
       </div>
       <div class="chip-row" style="flex-wrap:wrap;gap:5px">
         ${HAND_PORTIONS.map(hp=>`
@@ -2682,14 +2740,132 @@ function sheetAddFoodContent(props){
         `).join("")}
       </div>
     </div>
-    ${renderEstimatedNutritionCard(m, "Estimated nutrition")}
-    <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="confirmAddFood()">Add to meal</button>`;
+
+    <!-- Direct Nutrition Overrides (Custom Brand / Higher Protein) -->
+    <div style="margin:10px 0 12px;background:var(--card-tint);border:1.5px solid ${isCustomized ? 'var(--coral)' : 'var(--line)'};border-radius:var(--radius-lg);padding:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:6px">
+          <span>✏️ Edit Macros & Micros (Custom Brand / Product)</span>
+          ${isCustomized ? `<span class="badge" style="background:var(--coral-soft);color:var(--coral-dark);font-size:10px;font-weight:700">Customized</span>` : ''}
+        </div>
+        ${isCustomized ? `
+          <button type="button" class="link-btn" style="font-size:11.5px;color:var(--coral);font-weight:700" onclick="resetAddFoodCustomMacros()">🔄 Reset standard</button>
+        ` : `
+          <span class="muted small" style="font-size:11px">Override if product has more protein</span>
+        `}
+      </div>
+
+      <!-- Macros Row -->
+      <div class="row" style="gap:8px;margin-bottom:8px">
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Calories (kcal)</label>
+          <input type="number" value="${Math.round(m.cal)}" style="font-weight:700;color:var(--coral)" oninput="setAddFoodCustomMacro('cal', this.value)">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">🥩 Protein (g)</label>
+          <input type="number" step="0.1" value="${round1(m.p)}" style="font-weight:800;color:var(--ink)" oninput="setAddFoodCustomMacro('p', this.value)">
+        </div>
+      </div>
+      <div class="row" style="gap:8px;margin-bottom:8px">
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">🍚 Carbs (g)</label>
+          <input type="number" step="0.1" value="${round1(m.c)}" style="font-weight:700" oninput="setAddFoodCustomMacro('c', this.value)">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">🥑 Fat (g)</label>
+          <input type="number" step="0.1" value="${round1(m.fat)}" style="font-weight:700" oninput="setAddFoodCustomMacro('fat', this.value)">
+        </div>
+      </div>
+
+      <!-- Micronutrients Row (Fibre, Sugar, Sat Fat, Sodium) -->
+      <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
+        <div class="muted small" style="font-weight:700;margin-bottom:6px;font-size:11px">Micronutrients:</div>
+        <div class="row" style="gap:6px">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🌾 Fibre (g)</label>
+            <input type="number" step="0.1" value="${round1(m.fib)}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="setAddFoodCustomMacro('fib', this.value)">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🍬 Sugar (g)</label>
+            <input type="number" step="0.1" value="${round1(m.sug||0)}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="setAddFoodCustomMacro('sug', this.value)">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🧈 Sat Fat (g)</label>
+            <input type="number" step="0.1" value="${round1(m.sat||0)}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="setAddFoodCustomMacro('sat', this.value)">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🧂 Sodium (mg)</label>
+            <input type="number" value="${Math.round(m.sod||0)}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="setAddFoodCustomMacro('sod', this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${renderEstimatedNutritionCard(m, isCustomized ? "Custom nutrition" : "Estimated nutrition")}
+    <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="confirmAddFood()">
+      Add to meal (${Math.round(m.cal)} kcal · ${round1(m.p)}g P)
+    </button>`;
 }
 function refreshSheet(){ render(); }
+function setAddFoodQtyInput(val){
+  const props = STATE.sheet.props;
+  const oldQty = Number(props.qty) || 1;
+  const newQty = Math.max(0.1, Number(val)||0);
+  if(props.customMacros && oldQty > 0 && newQty > 0){
+    const ratio = newQty / oldQty;
+    scaleCustomMacros(props.customMacros, ratio);
+  }
+  props.qty = newQty;
+  refreshSheet();
+}
+function setAddFoodUnitSelect(u){
+  const props = STATE.sheet.props;
+  const f = findFoodById(props.foodId);
+  props.unit = u;
+  if(u === "g"){
+    if(props.qty === 1 && f && f.serving && f.serving.grams){
+      props.qty = f.serving.grams;
+    }
+  }
+  props.customMacros = null;
+  refreshSheet();
+}
+function setAddFoodGrams(grams){
+  const props = STATE.sheet.props;
+  props.unit = "g";
+  props.qty = grams;
+  props.customMacros = null;
+  refreshSheet();
+}
+function setAddFoodCustomMacro(key, val){
+  const props = STATE.sheet.props;
+  const f = findFoodById(props.foodId);
+  const std = macrosForQty(f, props.qty, props.unit);
+  props.customMacros = Object.assign({}, std, props.customMacros || {});
+  props.customMacros[key] = Math.max(0, Number(val)||0);
+  refreshSheet();
+}
+function resetAddFoodCustomMacros(){
+  const props = STATE.sheet.props;
+  props.customMacros = null;
+  refreshSheet();
+}
+function scaleCustomMacros(cm, ratio){
+  if(!cm || !ratio) return;
+  cm.cal = Math.round((cm.cal || 0) * ratio);
+  cm.p = round1((cm.p || 0) * ratio);
+  cm.c = round1((cm.c || 0) * ratio);
+  cm.fat = round1((cm.fat || 0) * ratio);
+  cm.fib = round1((cm.fib || 0) * ratio);
+  cm.sug = round1((cm.sug || 0) * ratio);
+  cm.sat = round1((cm.sat || 0) * ratio);
+  cm.sod = Math.round((cm.sod || 0) * ratio);
+}
 function applyHandPortion(grams){
   const props = STATE.sheet.props;
   props.unit = "g";
   props.qty = grams;
+  props.customMacros = null;
   refreshSheet();
 }
 function qtyStep(unit){
@@ -2697,22 +2873,60 @@ function qtyStep(unit){
 }
 function stepQty(delta){
   const props = STATE.sheet.props;
-  props.qty = Math.max(0, round1((props.qty||0)+delta));
+  const oldQty = Number(props.qty) || 1;
+  const newQty = Math.max(0.1, round1(oldQty + delta));
+  if(props.customMacros && oldQty > 0 && newQty > 0){
+    const ratio = newQty / oldQty;
+    scaleCustomMacros(props.customMacros, ratio);
+  }
+  props.qty = newQty;
   refreshSheet();
 }
 function setQtyMultiplier(mult){
   const props = STATE.sheet.props;
   const f = findFoodById(props.foodId);
   const base = (f && f.serving) ? f.serving.qty : 1;
-  props.qty = round1(base*mult);
+  const oldQty = Number(props.qty) || 1;
+  const newQty = round1(base * mult);
+  if(props.customMacros && oldQty > 0 && newQty > 0){
+    const ratio = newQty / oldQty;
+    scaleCustomMacros(props.customMacros, ratio);
+  }
+  props.qty = newQty;
   if(f && f.serving && f.serving.unit) props.unit = f.serving.unit;
   refreshSheet();
 }
 function confirmAddFood(){
   const props = STATE.sheet.props; const f = findFoodById(props.foodId);
-  const m = macrosForQty(f, props.qty, props.unit);
+  let m;
+  let isCustom = false;
+  if(props.customMacros){
+    m = {
+      cal: Math.round(Number(props.customMacros.cal)||0),
+      p: round1(Number(props.customMacros.p)||0),
+      c: round1(Number(props.customMacros.c)||0),
+      fat: round1(Number(props.customMacros.fat)||0),
+      fib: round1(Number(props.customMacros.fib)||0),
+      sug: round1(Number(props.customMacros.sug)||0),
+      sat: round1(Number(props.customMacros.sat)||0),
+      sod: Math.round(Number(props.customMacros.sod)||0)
+    };
+    isCustom = true;
+  } else {
+    m = macrosForQty(f, props.qty, props.unit);
+  }
   const draft = ensureDraft();
-  draft.items.push({id:uid(), foodId:f.id, name:f.name, qty:props.qty, unit:props.unit, macros:m, source:"manual"});
+  draft.items.push({
+    id: uid(),
+    foodId: f.id,
+    name: f.name,
+    qty: props.qty,
+    unit: props.unit,
+    macros: m,
+    source: "manual",
+    isCustom: isCustom,
+    customNutrition: isCustom
+  });
   if(draft.items.length===1){
     openReviewDraftSheet();
   } else {
@@ -2913,6 +3127,9 @@ function openEditDraftItemSheet(idx){
     c: round1((it.macros||{}).c || 0),
     fat: round1((it.macros||{}).fat || 0),
     fib: round1((it.macros||{}).fib || 0),
+    sug: round1((it.macros||{}).sug || 0),
+    sat: round1((it.macros||{}).sat || 0),
+    sod: Math.round((it.macros||{}).sod || 0),
     baseGrams: (f && f.serving) ? f.serving.grams : 100
   });
 }
@@ -2927,7 +3144,7 @@ function sheetEditDraftItemContent(props){
   const units = f ? unitOptions(f) : ["serving", "piece", "g", "bowl", "cup", "slice", "tbsp", "ml"];
   const step = qtyStep(props.unit || it.unit);
 
-  let previewMacros = {cal: props.cal, p: props.p, c: props.c, fat: props.fat, fib: props.fib};
+  let previewMacros = {cal: props.cal, p: props.p, c: props.c, fat: props.fat, fib: props.fib, sug: props.sug||0, sat: props.sat||0, sod: props.sod||0};
   if(props.customMacros){
     previewMacros = Object.assign({}, previewMacros, props.customMacros);
   } else if(f){
@@ -2940,7 +3157,10 @@ function sheetEditDraftItemContent(props){
       p: round1(((it.macros||{}).p || 0) * ratio),
       c: round1(((it.macros||{}).c || 0) * ratio),
       fat: round1(((it.macros||{}).fat || 0) * ratio),
-      fib: round1(((it.macros||{}).fib || 0) * ratio)
+      fib: round1(((it.macros||{}).fib || 0) * ratio),
+      sug: round1(((it.macros||{}).sug || 0) * ratio),
+      sat: round1(((it.macros||{}).sat || 0) * ratio),
+      sod: Math.round(((it.macros||{}).sod || 0) * ratio)
     };
   }
 
@@ -3012,25 +3232,42 @@ function sheetEditDraftItemContent(props){
       <div class="row" style="gap:8px;margin-bottom:8px">
         <div class="field" style="flex:1;margin-bottom:0">
           <label style="font-size:11.5px">Calories (kcal)</label>
-          <input type="number" value="${previewMacros.cal}" style="font-weight:700;color:var(--coral)" oninput="setCustomEditMacro('cal', this.value)">
+          <input type="number" value="${Math.round(previewMacros.cal)}" style="font-weight:700;color:var(--coral)" oninput="setCustomEditMacro('cal', this.value)">
         </div>
         <div class="field" style="flex:1;margin-bottom:0">
           <label style="font-size:11.5px">Protein (g)</label>
-          <input type="number" step="0.1" value="${previewMacros.p}" style="font-weight:700" oninput="setCustomEditMacro('p', this.value)">
+          <input type="number" step="0.1" value="${round1(previewMacros.p)}" style="font-weight:700" oninput="setCustomEditMacro('p', this.value)">
         </div>
       </div>
-      <div class="row" style="gap:8px">
+      <div class="row" style="gap:8px;margin-bottom:8px">
         <div class="field" style="flex:1;margin-bottom:0">
           <label style="font-size:11.5px">Carbs (g)</label>
-          <input type="number" step="0.1" value="${previewMacros.c}" style="font-weight:700" oninput="setCustomEditMacro('c', this.value)">
+          <input type="number" step="0.1" value="${round1(previewMacros.c)}" style="font-weight:700" oninput="setCustomEditMacro('c', this.value)">
         </div>
         <div class="field" style="flex:1;margin-bottom:0">
           <label style="font-size:11.5px">Fat (g)</label>
-          <input type="number" step="0.1" value="${previewMacros.fat}" style="font-weight:700" oninput="setCustomEditMacro('fat', this.value)">
+          <input type="number" step="0.1" value="${round1(previewMacros.fat)}" style="font-weight:700" oninput="setCustomEditMacro('fat', this.value)">
         </div>
-        <div class="field" style="flex:1;margin-bottom:0">
-          <label style="font-size:11.5px">Fibre (g)</label>
-          <input type="number" step="0.1" value="${previewMacros.fib}" style="font-weight:700" oninput="setCustomEditMacro('fib', this.value)">
+      </div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
+        <div class="muted small" style="font-weight:700;margin-bottom:6px;font-size:11px">Micronutrients:</div>
+        <div class="row" style="gap:6px">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🌾 Fibre (g)</label>
+            <input type="number" step="0.1" value="${round1(previewMacros.fib)}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="setCustomEditMacro('fib', this.value)">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🍬 Sugar (g)</label>
+            <input type="number" step="0.1" value="${round1(previewMacros.sug||0)}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="setCustomEditMacro('sug', this.value)">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🧈 Sat Fat (g)</label>
+            <input type="number" step="0.1" value="${round1(previewMacros.sat||0)}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="setCustomEditMacro('sat', this.value)">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🧂 Sodium (mg)</label>
+            <input type="number" value="${Math.round(previewMacros.sod||0)}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="setCustomEditMacro('sod', this.value)">
+          </div>
         </div>
       </div>
     </div>
@@ -3057,7 +3294,7 @@ function sheetEditDraftItemContent(props){
 function setCustomEditMacro(key, val){
   const props = STATE.sheet.props;
   props.customMacros = props.customMacros || {
-    cal: props.cal, p: props.p, c: props.c, fat: props.fat, fib: props.fib
+    cal: props.cal, p: props.p, c: props.c, fat: props.fat, fib: props.fib, sug: props.sug||0, sat: props.sat||0, sod: props.sod||0
   };
   props.customMacros[key] = Math.max(0, Number(val)||0);
   refreshSheet();
@@ -3105,10 +3342,12 @@ function saveEditedDraftItem(idx){
       c: round1(Number(props.customMacros.c != null ? props.customMacros.c : (it.macros||{}).c)||0),
       fat: round1(Number(props.customMacros.fat != null ? props.customMacros.fat : (it.macros||{}).fat)||0),
       fib: round1(Number(props.customMacros.fib != null ? props.customMacros.fib : (it.macros||{}).fib)||0),
-      sug: (it.macros||{}).sug || 0,
-      sat: (it.macros||{}).sat || 0,
-      sod: (it.macros||{}).sod || 0
+      sug: round1(Number(props.customMacros.sug != null ? props.customMacros.sug : (it.macros||{}).sug)||0),
+      sat: round1(Number(props.customMacros.sat != null ? props.customMacros.sat : (it.macros||{}).sat)||0),
+      sod: Math.round(Number(props.customMacros.sod != null ? props.customMacros.sod : (it.macros||{}).sod)||0)
     };
+    it.isCustom = true;
+    it.customNutrition = true;
   } else if(f){
     it.macros = macrosForQty(f, it.qty, it.unit);
   } else {
@@ -3119,8 +3358,13 @@ function saveEditedDraftItem(idx){
       p: round1(((it.macros||{}).p || 0) * ratio),
       c: round1(((it.macros||{}).c || 0) * ratio),
       fat: round1(((it.macros||{}).fat || 0) * ratio),
-      fib: round1(((it.macros||{}).fib || 0) * ratio)
+      fib: round1(((it.macros||{}).fib || 0) * ratio),
+      sug: round1(((it.macros||{}).sug || 0) * ratio),
+      sat: round1(((it.macros||{}).sat || 0) * ratio),
+      sod: Math.round(((it.macros||{}).sod || 0) * ratio)
     };
+    it.isCustom = true;
+    it.customNutrition = true;
   }
   toast(`Updated portion and nutrition for ${it.name}`);
   openReviewDraftSheet();
@@ -3137,7 +3381,17 @@ async function saveDraftMeal(source){
   const totals = sumMacros(d.items.map(i=>i.macros));
   const meal = {
     date:d.date || STATE.selectedDate, time:nowTime(), mealType:d.mealType || suggestMealType(),
-    items:d.items.map(i=>({foodId:i.foodId||null, name:i.name, qty:i.qty, unit:i.unit, macros:i.macros, source:i.source||"manual", confidence:i.confidence!=null?i.confidence:null})),
+    items:d.items.map(i=>({
+      foodId:i.foodId||null,
+      name:i.name,
+      qty:i.qty,
+      unit:i.unit,
+      macros:i.macros,
+      source:i.source||"manual",
+      confidence:i.confidence!=null?i.confidence:null,
+      isCustom:!!i.isCustom,
+      customNutrition:!!i.customNutrition
+    })),
     totals, source: source||"manual", note:d.note||"", imageAssetId:d.imageAssetId||null, imageUrl:d.imageUrl||null,
     createdAt:Date.now(),
   };
@@ -5152,7 +5406,8 @@ async function deleteAllData(){
    WHAT SHOULD I EAT NOW? + AI MEAL PLANNER
    ============================================================ */
 function openWhatToEat(){
-  STATE.eat = {mode:"now", status:"loading", options:[], plan:null, error:null};
+  const defaultCuisine = (STATE.profile && STATE.profile.cuisine) || "Indian";
+  STATE.eat = {mode:"now", status:"loading", cuisine:defaultCuisine, options:[], plan:null, error:null};
   openSheet("whatToEat", {});
   fetchEatNow();
 }
@@ -5165,6 +5420,7 @@ function buildEatContext(){
   const remC = Math.max(10, round1((t.carbs || 220) - totals.c));
   const remF = Math.max(5, round1((t.fat || 65) - totals.fat));
   const remFib = Math.max(4, round1((t.fibre || 30) - totals.fib));
+  const cuisine = (STATE.eat && STATE.eat.cuisine) || (p && p.cuisine) || "Indian";
   return {
     remaining: { calories: remCal, protein: remP, carbs: remC, fat: remF, fibre: remFib },
     timeOfDay: new Date().toTimeString().slice(0, 5),
@@ -5173,14 +5429,33 @@ function buildEatContext(){
     allergies: p.allergies || [],
     dislikes: p.dislikes || "",
     budget: p.budget || "medium",
-    cuisine: p.cuisine || "",
+    cuisine: cuisine,
     goal: p.goal || "maintain",
   };
 }
+function setEatCuisine(cuisine){
+  STATE.eat = STATE.eat || {};
+  STATE.eat.cuisine = cuisine;
+  if(STATE.eat.mode === "plan"){
+    fetchEatPlan();
+  } else {
+    fetchEatNow();
+  }
+}
 function sheetWhatToEatContent(){
   const e = STATE.eat;
+  const curCuisine = (e && e.cuisine) || "Indian";
   return `<div class="sheet-handle"></div>
     <div class="sheet-head"><h3>${ICO.sparkle} What should I eat?</h3><button class="icon-btn" onclick="closeSheet()">${ICO.close}</button></div>
+    <div style="margin-bottom:10px">
+      <div class="muted small" style="font-weight:700;font-size:11px;margin-bottom:6px;letter-spacing:0.3px;text-transform:uppercase">Cuisine Style:</div>
+      <div class="chip-row" style="flex-wrap:wrap;gap:6px">
+        <span class="chip ${curCuisine==='Indian'?'active':''}" onclick="setEatCuisine('Indian')">🇮🇳 Indian (Default)</span>
+        <span class="chip ${curCuisine==='High-Protein Indian'?'active':''}" onclick="setEatCuisine('High-Protein Indian')">💪 High-Protein Indian</span>
+        <span class="chip ${curCuisine==='Vegetarian Indian'?'active':''}" onclick="setEatCuisine('Vegetarian Indian')">🌿 Pure Veg Indian</span>
+        <span class="chip ${curCuisine==='Global'?'active':''}" onclick="setEatCuisine('Global')">🌎 Global / All</span>
+      </div>
+    </div>
     <div class="segmented" style="margin-bottom:12px">
       <button class="${e.mode==='now'?'active':''}" onclick="STATE.eat.mode='now'; refreshSheet()">Right now</button>
       <button class="${e.mode==='plan'?'active':''}" onclick="STATE.eat.mode='plan'; refreshSheet()">Plan tomorrow</button>
@@ -5192,12 +5467,12 @@ function renderEatNow(){
   if(e.status==="loading") return `<div class="analyzing-pulse" style="padding:24px 16px;text-align:center">
     <div class="pulse-ring" style="width:36px;height:36px;margin:0 auto 10px"></div>
     <div style="font-weight:700;font-size:15px;margin-bottom:4px">Finding options for you…</div>
-    <div class="muted small">AI is calculating meals that fit your remaining daily targets</div>
+    <div class="muted small">Calculating high-protein ${esc(e.cuisine||'Indian')} meals that fit your remaining targets</div>
   </div>`;
   if(e.status==="error") return `<div class="error-box">${esc(e.error)}</div><button class="btn btn-primary btn-block" style="margin-top:10px" onclick="fetchEatNow()">Try again</button>`;
   if(e.status==="results"){
     return e.options.map((o,idx)=>`<div class="card tight" style="margin-bottom:12px;border:1px solid var(--line)">
-      <div class="row"><b>${esc(o.name)}</b><span class="badge badge-ai">✨ AI suggested</span></div>
+      <div class="row"><b>${esc(o.name)}</b><span class="badge badge-ai">✨ Recommended</span></div>
       <p class="small muted" style="margin:4px 0">${esc(o.description)}</p>
       ${renderEstimatedNutritionCard({cal:o.calories,p:o.protein,c:o.carbs,fat:o.fat,fib:o.fibre}, "Estimated nutrition")}
       <p class="small" style="margin:6px 0 8px"><b>Why it fits:</b> ${esc(o.whyItFits)}${o.estimatedCost?` · ~${esc(o.estimatedCost)}`:""}</p>
@@ -5208,11 +5483,149 @@ function renderEatNow(){
   return `<p class="muted small" style="margin-bottom:12px">Based on ${ctx.remaining.calories} kcal and ${ctx.remaining.protein}g protein remaining today.</p>
     <button class="btn btn-primary btn-block" onclick="fetchEatNow()">✨ Get suggestions</button>`;
 }
+function generateLocalMealSuggestions(ctx){
+  const remCal = (ctx && ctx.remaining && ctx.remaining.calories) || 500;
+  const remP = (ctx && ctx.remaining && ctx.remaining.protein) || 25;
+  const cuisine = (ctx && ctx.cuisine) || "Indian";
+  const isVeg = /veg/i.test(ctx.diet || "") || cuisine === "Vegetarian Indian";
+
+  const indianOptions = [
+    {
+      name: "Paneer Bhurji with 2 Multigrain Rotis",
+      description: "150g spiced crumbled paneer cooked with onions, tomatoes, green chilies, served with 2 warm multigrain phulkas.",
+      calories: 440, protein: 28, carbs: 36, fat: 22, fibre: 7, estimatedCost: "₹90",
+      whyItFits: "Delivers 28g high-quality vegetarian protein while keeping carbohydrates moderate.",
+      veg: true
+    },
+    {
+      name: "Moong Dal Chilla with Mint Chutney & Paneer Filling",
+      description: "2 savoury golden crepes made from soaked moong dal batter, stuffed with grated low-fat paneer and fresh herbs.",
+      calories: 340, protein: 26, carbs: 32, fat: 12, fibre: 8, estimatedCost: "₹70",
+      whyItFits: "Rich in plant protein and dietary fibre; light on the stomach and quick to prepare.",
+      veg: true
+    },
+    {
+      name: "Soya Chunks Pulao with Cucumber Raita",
+      description: "50g high-protein Nutrela soya chunks sautéed with basmati rice, peas, and cumin, paired with a cool curd bowl.",
+      calories: 420, protein: 35, carbs: 48, fat: 8, fibre: 9, estimatedCost: "₹60",
+      whyItFits: "Massive 35g protein boost with low fat; ideal for hitting your daily protein target.",
+      veg: true
+    },
+    {
+      name: "Egg Bhurji (3 Eggs) with Toasted Whole Wheat Bread",
+      description: "3 whole eggs scrambled Indian style with onions, ginger, turmeric, and coriander, served with 2 slices of whole wheat toast.",
+      calories: 380, protein: 26, carbs: 28, fat: 18, fibre: 4, estimatedCost: "₹55",
+      whyItFits: "Complete amino acid profile with essential healthy fats and vitamins.",
+      veg: false
+    },
+    {
+      name: "Tandoori Chicken Tikka with Garden Salad & Lemon",
+      description: "180g succulent marinated chicken breast cubes roasted with yogurt and tandoori spices, with onion rings and mint dip.",
+      calories: 310, protein: 44, carbs: 6, fat: 12, fibre: 2, estimatedCost: "₹140",
+      whyItFits: "Ultra-high protein (44g) with ultra-low carbs, perfect if you need protein without extra calories.",
+      veg: false
+    },
+    {
+      name: "Sprouted Moong & Kala Chana Chaat with Roasted Peanuts",
+      description: "150g steamed sprouted green moong and black chickpeas tossed with chopped cucumber, tomato, chaat masala, roasted peanuts, and lime.",
+      calories: 270, protein: 17, carbs: 38, fat: 6, fibre: 11, estimatedCost: "₹40",
+      whyItFits: "High fibre (11g) and plant bio-available micronutrients that keep you satiated for hours.",
+      veg: true
+    },
+    {
+      name: "Dal Tadka with Steamed Jeera Rice & Curd",
+      description: "1 generous bowl of yellow toor dal tempered with cumin, garlic, and ghee, served with 1 cup steamed rice and fresh dahi.",
+      calories: 430, protein: 20, carbs: 68, fat: 9, fibre: 7, estimatedCost: "₹65",
+      whyItFits: "Classic Indian comfort meal with balanced lentils and complementary grain amino acids.",
+      veg: true
+    },
+    {
+      name: "Roasted Makhana & Chana Sattu Drink",
+      description: "40g roasted Bihar chana sattu stirred in chilled water with roasted cumin, black salt, and lemon, plus a bowl of crispy roasted fox nuts.",
+      calories: 260, protein: 19, carbs: 38, fat: 4, fibre: 10, estimatedCost: "₹35",
+      whyItFits: "Natural Indian superfood snack packed with 19g protein, gut-friendly fibre, and zero refined sugar.",
+      veg: true
+    },
+    {
+      name: "Besan Chilla with Spiced Curd",
+      description: "2 savoury gram flour pancakes loaded with grated carrots and coriander, served with 100g fresh curd.",
+      calories: 310, protein: 18, carbs: 36, fat: 11, fibre: 6, estimatedCost: "₹45",
+      whyItFits: "Complex low-GI carbs from chickpea flour paired with gut-healthy probiotics.",
+      veg: true
+    },
+    {
+      name: "Palak Paneer with 2 Phulkas",
+      description: "Fresh spinach puree simmered with garlic, cumin, and soft paneer cubes, served with 2 warm whole wheat rotis.",
+      calories: 410, protein: 22, carbs: 34, fat: 21, fibre: 7, estimatedCost: "₹95",
+      whyItFits: "Rich in iron, magnesium, calcium, and sustained-release casein protein.",
+      veg: true
+    }
+  ];
+
+  const pool = isVeg ? indianOptions.filter(o => o.veg) : indianOptions;
+  const scored = pool.slice().sort((a,b) => {
+    const diffA = Math.abs(a.calories - remCal) + Math.abs(a.protein - remP) * 4;
+    const diffB = Math.abs(b.calories - remCal) + Math.abs(b.protein - remP) * 4;
+    return diffA - diffB;
+  });
+  return scored.slice(0, 3);
+}
+
+function generateLocalDayPlan(ctx){
+  const isVeg = /veg/i.test(ctx.diet || "") || (ctx.cuisine === "Vegetarian Indian");
+  const meals = [
+    {
+      mealType: "Breakfast",
+      name: "Moong Dal Chilla with Mint Chutney & Paneer",
+      description: "2 golden moong dal crepes stuffed with grated paneer and herbs",
+      calories: 340, protein: 25, carbs: 32, fat: 12, fibre: 7
+    },
+    {
+      mealType: "Lunch",
+      name: "Soya Chunks Pulao with Cucumber Raita",
+      description: "Spiced basmati rice with 50g soya chunks and a cool yogurt bowl",
+      calories: 440, protein: 36, carbs: 50, fat: 8, fibre: 9
+    },
+    {
+      mealType: "Evening snack",
+      name: "Sprouted Moong Chaat & Roasted Makhana",
+      description: "Steamed sprouts with lemon, pink salt, and roasted crunchy makhana",
+      calories: 220, protein: 14, carbs: 34, fat: 3, fibre: 8
+    },
+    {
+      mealType: "Dinner",
+      name: isVeg ? "Paneer Bhurji with 2 Phulkas & Salad" : "Chicken Tikka with 2 Phulkas & Green Salad",
+      description: isVeg ? "Fresh paneer bhurji with 2 whole wheat rotis and tomato-onion salad" : "Grilled tender chicken tikka with 2 rotis and mint chutney",
+      calories: isVeg ? 450 : 420, protein: isVeg ? 28 : 42, carbs: 36, fat: isVeg ? 22 : 12, fibre: 6
+    }
+  ];
+  const dayTotals = sumMacros(meals.map(m=>({cal:m.calories,p:m.protein,c:m.carbs,fat:m.fat,fib:m.fibre})));
+  return { meals, dayTotals };
+}
+
 async function fetchEatNow(){
   STATE.eat.status="loading"; refreshSheet();
-  const res = await RecommendationService.whatToEatNow(buildEatContext());
-  if(!res.ok){ STATE.eat.status="error"; STATE.eat.error=res.message; refreshSheet(); return; }
-  STATE.eat.options = res.data.options||[]; STATE.eat.status="results"; refreshSheet();
+  const ctx = buildEatContext();
+  try{
+    const res = await RecommendationService.whatToEatNow(ctx);
+    if(res && res.ok && res.data && Array.isArray(res.data.options) && res.data.options.length > 0){
+      STATE.eat.options = res.data.options;
+      STATE.eat.status = "results";
+      refreshSheet();
+      return;
+    }
+  }catch(err){
+    console.warn("AI recommendation error, using local engine:", err);
+  }
+  const localOpts = generateLocalMealSuggestions(ctx);
+  if(localOpts && localOpts.length > 0){
+    STATE.eat.options = localOpts;
+    STATE.eat.status = "results";
+  } else {
+    STATE.eat.status = "error";
+    STATE.eat.error = "Could not load meal suggestions. Please try again.";
+  }
+  refreshSheet();
 }
 async function addEatSuggestion(idx){
   const o = STATE.eat.options[idx];
@@ -5222,7 +5635,7 @@ async function addEatSuggestion(idx){
   const fat = round1(parseFloat(o.fat) || 0);
   const fib = round1(parseFloat(o.fibre) || 0);
   const macros = {cal, p, c, fat, fib, sug:0, sat:0, sod:0};
-  const meal = {date:STATE.selectedDate, time:nowTime(), mealType:suggestMealType(), items:[{foodId:null,name:o.name,qty:1,unit:"serving",macros,source:"ai_suggestion",confidence:null}], totals:macros, source:"ai_suggestion", note:o.description, createdAt:Date.now()};
+  const meal = {date:STATE.selectedDate, time:nowTime(), mealType:suggestMealType(), items:[{foodId:null,name:o.name,qty:1,unit:"serving",macros,source:"ai_suggestion",confidence:null,isCustom:true,customNutrition:true}], totals:macros, source:"ai_suggestion", note:o.description, createdAt:Date.now()};
   await StorageService.addToCollection("meals", meal);
   closeSheet(); toast("Added to today's plan");
   await loadMealsForDate(STATE.selectedDate); await refreshAllMealsCache(); goTo("home");
@@ -5247,14 +5660,27 @@ function renderEatPlan(){
 async function fetchEatPlan(){
   STATE.eat.status="loadingPlan"; refreshSheet();
   const p = STATE.profile || { targets: { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 30 }, goal: "maintain", diet: "balanced" };
-  const ctx = {targets:p.targets, diet:p.diet||"balanced", allergies:p.allergies||[], dislikes:p.dislikes||"", budget:p.budget||"medium", cuisine:p.cuisine||"", goal:p.goal||"maintain", mealsPerDay:p.mealsPerDay||4};
-  const res = await RecommendationService.planDay(ctx);
-  if(!res.ok){ STATE.eat.status="errorPlan"; STATE.eat.error=res.message; refreshSheet(); return; }
-  STATE.eat.plan = res.data; STATE.eat.status="plan"; refreshSheet();
+  const cuisine = (STATE.eat && STATE.eat.cuisine) || (p && p.cuisine) || "Indian";
+  const ctx = {targets:p.targets, diet:p.diet||"balanced", allergies:p.allergies||[], dislikes:p.dislikes||"", budget:p.budget||"medium", cuisine:cuisine, goal:p.goal||"maintain", mealsPerDay:p.mealsPerDay||4};
+  try{
+    const res = await RecommendationService.planDay(ctx);
+    if(res && res.ok && res.data && res.data.meals){
+      STATE.eat.plan = res.data;
+      STATE.eat.status = "plan";
+      refreshSheet();
+      return;
+    }
+  }catch(err){
+    console.warn("AI plan error, using local planner:", err);
+  }
+  STATE.eat.plan = generateLocalDayPlan(ctx);
+  STATE.eat.status = "plan";
+  refreshSheet();
 }
 async function regenPlanMeal(idx){
   const p = STATE.profile; const m = STATE.eat.plan.meals[idx];
-  const ctx = {targets:p.targets, diet:p.diet, allergies:p.allergies, dislikes:p.dislikes, budget:p.budget, cuisine:p.cuisine, goal:p.goal, avoid:m.name};
+  const cuisine = (STATE.eat && STATE.eat.cuisine) || (p && p.cuisine) || "Indian";
+  const ctx = {targets:p.targets, diet:p.diet, allergies:p.allergies, dislikes:p.dislikes, budget:p.budget, cuisine:cuisine, goal:p.goal, avoid:m.name};
   const res = await RecommendationService.regenerateMeal(ctx, m.mealType);
   if(!res.ok){ toast(res.message); return; }
   STATE.eat.plan.meals[idx] = res.data;
@@ -5270,7 +5696,7 @@ async function addWholePlan(){
     const fat = round1(parseFloat(m.fat) || 0);
     const fib = round1(parseFloat(m.fibre) || 0);
     const macros = {cal, p, c, fat, fib, sug:0, sat:0, sod:0};
-    const meal = {date:tomorrow, time:"", mealType:m.mealType, items:[{foodId:null,name:m.name,qty:1,unit:"serving",macros,source:"ai_suggestion",confidence:null}], totals:macros, source:"ai_suggestion", note:m.description, createdAt:Date.now()};
+    const meal = {date:tomorrow, time:"", mealType:m.mealType, items:[{foodId:null,name:m.name,qty:1,unit:"serving",macros,source:"ai_suggestion",confidence:null,isCustom:true,customNutrition:true}], totals:macros, source:"ai_suggestion", note:m.description, createdAt:Date.now()};
     await StorageService.addToCollection("meals", meal);
   }
   closeSheet(); toast("Tomorrow's plan added");
@@ -5286,40 +5712,98 @@ function openQuickAddSheet(mealType){
     protein: "",
     carbs: "",
     fat: "",
+    fib: "",
+    sug: "",
+    sat: "",
+    sod: "",
+    qty: 100,
+    unit: "g",
     name: "",
     mealType: mealType || suggestMealType()
   });
 }
 
 function sheetQuickAddContent(props){
+  const curUnit = props.unit || "g";
+  const curQty = props.qty != null ? props.qty : 100;
   return `<div class="sheet-handle"></div>
     <div class="sheet-head">
-      <h3>⚡ Quick Add Calories</h3>
+      <h3>⚡ Quick Add Calories & Macros</h3>
       <button class="icon-btn" onclick="closeSheet()">${ICO.close}</button>
     </div>
-    <p class="muted small" style="margin:-4px 0 14px">Log calories and macros directly without searching for an item name.</p>
+    <p class="muted small" style="margin:-4px 0 14px">Log custom calories, protein, carbs, fat & micros with portion grams.</p>
+    
     <div class="field">
       <label>Calories (kcal) *</label>
       <input type="number" id="quick-cal-input" placeholder="e.g. 350" value="${props.cal||''}" oninput="STATE.sheet.props.cal=this.value; updateQuickAddLivePreview()" autofocus>
     </div>
+    
     <div class="field">
-      <label>Optional Description / Item Name</label>
-      <input type="text" placeholder="e.g. Cafe snack, muffin, energy drink" value="${esc(props.name||'')}" oninput="STATE.sheet.props.name=this.value">
+      <label>Optional Description / Product Name</label>
+      <input type="text" placeholder="e.g. Protein shake, Greek yogurt, Indian thali" value="${esc(props.name||'')}" oninput="STATE.sheet.props.name=this.value">
     </div>
-    <div class="row" style="gap:10px">
-      <div class="field" style="flex:1">
-        <label>Protein (g)</label>
-        <input type="number" placeholder="0" value="${props.protein||''}" oninput="STATE.sheet.props.protein=this.value; updateQuickAddLivePreview()">
+
+    <!-- Portion Quantity and Unit (Grams / Servings) -->
+    <div class="row" style="gap:10px;align-items:flex-end">
+      <div class="field" style="flex:1;margin-bottom:0">
+        <label>Portion / Grams</label>
+        <div class="row" style="gap:6px">
+          <button type="button" class="icon-btn" style="flex:none" onclick="stepQuickAddQty(-10)">−</button>
+          <input type="number" step="1" min="0.1" value="${curQty}" style="text-align:center;font-weight:700" oninput="STATE.sheet.props.qty=Number(this.value)||0; updateQuickAddLivePreview()">
+          <button type="button" class="icon-btn" style="flex:none" onclick="stepQuickAddQty(10)">+</button>
+        </div>
       </div>
-      <div class="field" style="flex:1">
-        <label>Carbs (g)</label>
-        <input type="number" placeholder="0" value="${props.carbs||''}" oninput="STATE.sheet.props.carbs=this.value; updateQuickAddLivePreview()">
-      </div>
-      <div class="field" style="flex:1">
-        <label>Fat (g)</label>
-        <input type="number" placeholder="0" value="${props.fat||''}" oninput="STATE.sheet.props.fat=this.value; updateQuickAddLivePreview()">
+      <div class="field" style="flex:1;margin-bottom:0">
+        <label>Unit</label>
+        <select style="font-weight:700" onchange="STATE.sheet.props.unit=this.value; refreshSheet()">
+          ${["g", "serving", "piece", "bowl", "cup", "slice", "ml"].map(u => `<option value="${u}" ${curUnit===u?'selected':''}>${u}</option>`).join("")}
+        </select>
       </div>
     </div>
+
+    <div class="chip-row" style="margin:8px 0 12px;flex-wrap:wrap;gap:5px">
+      ${(curUnit==='g') ? [50, 100, 150, 200, 250, 300].map(gm => `<span class="chip ${Number(curQty)===gm?'active':''}" onclick="STATE.sheet.props.qty=${gm}; refreshSheet()">${gm}g</span>`).join("") : [1, 2, 3].map(n => `<span class="chip ${Number(curQty)===n?'active':''}" onclick="STATE.sheet.props.qty=${n}; refreshSheet()">${n} ${curUnit}</span>`).join("")}
+    </div>
+
+    <!-- Primary Macros -->
+    <div class="row" style="gap:8px;margin-bottom:8px">
+      <div class="field" style="flex:1;margin-bottom:0">
+        <label style="font-size:11.5px">🥩 Protein (g)</label>
+        <input type="number" step="0.1" placeholder="0" value="${props.protein||''}" style="font-weight:700" oninput="STATE.sheet.props.protein=this.value; updateQuickAddLivePreview()">
+      </div>
+      <div class="field" style="flex:1;margin-bottom:0">
+        <label style="font-size:11.5px">🍚 Carbs (g)</label>
+        <input type="number" step="0.1" placeholder="0" value="${props.carbs||''}" style="font-weight:700" oninput="STATE.sheet.props.carbs=this.value; updateQuickAddLivePreview()">
+      </div>
+      <div class="field" style="flex:1;margin-bottom:0">
+        <label style="font-size:11.5px">🥑 Fat (g)</label>
+        <input type="number" step="0.1" placeholder="0" value="${props.fat||''}" style="font-weight:700" oninput="STATE.sheet.props.fat=this.value; updateQuickAddLivePreview()">
+      </div>
+    </div>
+
+    <!-- Micronutrients Section -->
+    <div style="margin:10px 0;padding:10px;background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-md)">
+      <div class="muted small" style="margin-bottom:6px;font-weight:700;font-size:11px">Optional Micronutrients:</div>
+      <div class="row" style="gap:6px">
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:10px">🌾 Fibre (g)</label>
+          <input type="number" step="0.1" placeholder="0" value="${props.fib||''}" style="font-size:12px;text-align:center" oninput="STATE.sheet.props.fib=this.value; updateQuickAddLivePreview()">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:10px">🍬 Sugar (g)</label>
+          <input type="number" step="0.1" placeholder="0" value="${props.sug||''}" style="font-size:12px;text-align:center" oninput="STATE.sheet.props.sug=this.value; updateQuickAddLivePreview()">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:10px">🧈 Sat Fat (g)</label>
+          <input type="number" step="0.1" placeholder="0" value="${props.sat||''}" style="font-size:12px;text-align:center" oninput="STATE.sheet.props.sat=this.value; updateQuickAddLivePreview()">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:10px">🧂 Sodium (mg)</label>
+          <input type="number" placeholder="0" value="${props.sod||''}" style="font-size:12px;text-align:center" oninput="STATE.sheet.props.sod=this.value; updateQuickAddLivePreview()">
+        </div>
+      </div>
+    </div>
+
     <div class="field">
       <label>Meal category</label>
       <div class="chip-row">
@@ -5327,16 +5811,21 @@ function sheetQuickAddContent(props){
       </div>
     </div>
     <div id="quickAddLivePreview">
-      ${(props.cal || props.protein || props.carbs || props.fat) ? renderEstimatedNutritionCard({cal:props.cal||0, p:props.protein||0, c:props.carbs||0, fat:props.fat||0, fib:0}, "Estimated nutrition") : ''}
+      ${(props.cal || props.protein || props.carbs || props.fat || props.fib) ? renderEstimatedNutritionCard({cal:props.cal||0, p:props.protein||0, c:props.carbs||0, fat:props.fat||0, fib:props.fib||0}, "Estimated nutrition") : ''}
     </div>
-    <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="saveQuickAddMeal()">Log ${props.cal?props.cal+' kcal':'Calories'}</button>`;
+    <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="saveQuickAddMeal()">Log ${props.cal?props.cal+' kcal':'Calories'} (${curQty}${curUnit})</button>`;
+}
+function stepQuickAddQty(delta){
+  const p = STATE.sheet.props;
+  p.qty = Math.max(1, (Number(p.qty)||100) + delta);
+  refreshSheet();
 }
 function updateQuickAddLivePreview(){
   const p = (STATE.sheet && STATE.sheet.props) || {};
   const el = document.getElementById("quickAddLivePreview");
   if(el){
-    if(p.cal || p.protein || p.carbs || p.fat){
-      el.innerHTML = renderEstimatedNutritionCard({cal:Number(p.cal)||0, p:Number(p.protein)||0, c:Number(p.carbs)||0, fat:Number(p.fat)||0, fib:0}, "Estimated nutrition");
+    if(p.cal || p.protein || p.carbs || p.fat || p.fib){
+      el.innerHTML = renderEstimatedNutritionCard({cal:Number(p.cal)||0, p:Number(p.protein)||0, c:Number(p.carbs)||0, fat:Number(p.fat)||0, fib:Number(p.fib)||0}, "Estimated nutrition");
     } else {
       el.innerHTML = "";
     }
@@ -5351,22 +5840,26 @@ async function saveQuickAddMeal(){
     return;
   }
   const mealName = (p.name||"").trim() || "Quick add";
+  const qty = Number(p.qty) || 100;
+  const unit = p.unit || "g";
   const item = {
     foodId: null,
     name: mealName,
-    qty: 1,
-    unit: "serving",
+    qty: qty,
+    unit: unit,
     macros: {
       cal: Math.round(cal),
       p: round1(Number(p.protein)||0),
       c: round1(Number(p.carbs)||0),
       fat: round1(Number(p.fat)||0),
-      fib: 0,
-      sug: 0,
-      sat: 0,
-      sod: 0
+      fib: round1(Number(p.fib)||0),
+      sug: round1(Number(p.sug)||0),
+      sat: round1(Number(p.sat)||0),
+      sod: Math.round(Number(p.sod)||0)
     },
-    source: "quick_add"
+    source: "quick_add",
+    isCustom: true,
+    customNutrition: true
   };
   const meal = {
     date: STATE.selectedDate,
@@ -5380,7 +5873,7 @@ async function saveQuickAddMeal(){
   };
   try{
     await StorageService.addToCollection("meals", meal);
-    toast(`Logged ${cal} kcal to ${meal.mealType}`);
+    toast(`Logged ${cal} kcal (${round1(item.macros.p)}g protein) to ${meal.mealType}`);
     closeSheet();
     await loadMealsForDate(STATE.selectedDate);
     await refreshAllMealsCache();

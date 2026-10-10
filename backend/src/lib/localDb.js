@@ -12,6 +12,8 @@ function ensureDataDir() {
   }
 }
 
+let _memDb = null;
+
 function loadDb() {
   ensureDataDir();
   if (!fs.existsSync(DB_FILE)) {
@@ -30,36 +32,49 @@ function loadDb() {
       customFoods: [],
       aiRecommendations: [],
     };
-    fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), 'utf8');
+    saveDb(initial);
     return initial;
   }
   try {
-    const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    return data;
+    const raw = fs.readFileSync(DB_FILE, 'utf8');
+    if (raw && raw.trim()) {
+      _memDb = JSON.parse(raw);
+      return _memDb;
+    }
   } catch (err) {
+    if (_memDb) return _memDb;
     console.warn('[LocalDB] Warning: Could not parse local DB file, initializing fresh store.', err.message);
-    return {
-      users: [],
-      profiles: [],
-      nutritionGoals: [],
-      meals: [],
-      mealItems: [],
-      weightLogs: [],
-      waterLogs: [],
-      favorites: [],
-      notifications: [],
-      notificationPreferences: [],
-      recipes: [],
-      customFoods: [],
-      aiRecommendations: [],
-    };
   }
+  if (_memDb) return _memDb;
+  return {
+    users: [],
+    profiles: [],
+    nutritionGoals: [],
+    meals: [],
+    mealItems: [],
+    weightLogs: [],
+    waterLogs: [],
+    favorites: [],
+    notifications: [],
+    notificationPreferences: [],
+    recipes: [],
+    customFoods: [],
+    aiRecommendations: [],
+  };
 }
 
 function saveDb(data) {
+  _memDb = data;
   try {
     ensureDataDir();
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+    const tempFile = `${DB_FILE}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
+    try {
+      fs.renameSync(tempFile, DB_FILE);
+    } catch (_) {
+      fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+      try { fs.unlinkSync(tempFile); } catch (__) {}
+    }
   } catch (err) {
     console.error('[LocalDB] Error writing DB file:', err.message);
   }
