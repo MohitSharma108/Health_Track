@@ -121,11 +121,11 @@ a{ color:inherit; }
 /* Forms */
 .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
 .field label{ font-size:12.5px; font-weight:600; color:var(--ink-soft); }
-.field input[type=text], .field input[type=number], .field input[type=date], .field input[type=time], .field select, .field textarea{
-  border:1.5px solid var(--line); background:var(--paper); border-radius:var(--radius-sm); padding:11px 12px; font-size:15px; color:var(--ink); width:100%;
+.field input, .field select, .field textarea{
+  border:1.5px solid var(--line); background:var(--paper); border-radius:var(--radius-md); padding:12px 14px; font-size:15px; color:var(--ink); width:100%; transition:border-color .15s ease, box-shadow .15s ease;
 }
 .field textarea{ resize:vertical; min-height:64px; font-family:inherit; }
-.field input:focus, .field select:focus, .field textarea:focus{ outline:2px solid var(--coral); outline-offset:1px; }
+.field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--coral); box-shadow:0 0 0 3px rgba(229,87,63,0.14); }
 .choice-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .choice-grid.c3{ grid-template-columns:1fr 1fr 1fr; }
 .choice{ border:1.5px solid var(--line); background:var(--card); border-radius:var(--radius-md); padding:12px 10px; text-align:center; font-size:13.5px; font-weight:600; cursor:pointer; }
@@ -4589,6 +4589,20 @@ async function showForgotPasswordPrompt(){
   }
 }
 
+function togglePasswordVisibility(){
+  const pwInput = document.getElementById("auth-password");
+  const icon = document.getElementById("pw-eye-icon");
+  if(!pwInput) return;
+  if(pwInput.type === "password"){
+    pwInput.type = "text";
+    if(icon) icon.textContent = "🙈";
+  } else {
+    pwInput.type = "password";
+    if(icon) icon.textContent = "👁️";
+  }
+}
+window.togglePasswordVisibility = togglePasswordVisibility;
+
 function renderAuthScreen(){
   const mode = STATE.authMode||"login";
   const f = STATE.authForm||(STATE.authForm={email:"",password:"",name:""});
@@ -4598,47 +4612,92 @@ function renderAuthScreen(){
     ? 'Log in to access your cloud meal logs and daily goals.'
     : (expired ? '7-Day Free Pass complete! Create your account to keep your streak.' : 'Create your free account to sync your 7-day trial data to the cloud.');
 
-  return `<div class="screen" style="padding-top:4vh;padding-bottom:30px;text-align:center;max-width:360px;margin:0 auto">
-    <div style="font-size:46px;margin-bottom:6px">🥗</div>
-    <h1 style="font-size:26px;margin-bottom:4px">${title}</h1>
-    <p class="muted small" style="margin-bottom:18px;line-height:1.4">${subtitle}</p>
-
-    <!-- Segmented Tab: Log In vs Create Account -->
-    <div class="segmented" style="margin:0 auto 16px">
-      <button type="button" class="${mode==='login'?'active':''}" onclick="setAuthTab('login')">🔐 Log In</button>
-      <button type="button" class="${mode==='register'?'active':''}" onclick="setAuthTab('register')">✨ Create Account</button>
-    </div>
-
-    <form id="auth-form" onsubmit="event.preventDefault(); submitAuth();" style="text-align:left;display:flex;flex-direction:column;gap:12px">
-      ${mode==='register'?`<div class="field" style="margin-bottom:0"><label for="auth-name">Your Name (optional)</label><input type="text" id="auth-name" autocomplete="name" placeholder="Enter your name" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value"></div>`:""}
-      <div class="field" style="margin-bottom:0">
-        <label for="auth-email">Email address</label>
-        <input type="email" id="auth-email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value">
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <label for="auth-password">Password</label>
-          ${mode==='login'?`<button type="button" class="link-btn" style="font-size:12px;color:var(--ink-faint);text-decoration:underline;cursor:pointer" onclick="showForgotPasswordPrompt()">Forgot password?</button>`:''}
-        </div>
-        <input type="password" id="auth-password" autocomplete="${mode==='login'?'current-password':'new-password'}" placeholder="Enter your password" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value">
-      </div>
-      ${STATE.authError?`<div class="error-box" style="margin-top:4px">${esc(STATE.authError)}</div>`:""}
-      <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-block" style="cursor:pointer;pointer-events:auto;position:relative;z-index:20;margin-top:6px;padding:14px;font-size:15px;touch-action:manipulation" ${STATE.authLoading?'style="opacity:0.75"':''}>
-        ${STATE.authLoading ? '⏳ Connecting to server…' : (mode==='login' ? '🔐 Log In & Access Data' : '✨ Create Account & Sync')}
-      </button>
-    </form>
+  return `<div class="screen" style="padding-top:3vh;padding-bottom:40px;max-width:400px;margin:0 auto">
     
-    <div style="text-align:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
-      <button type="button" class="link-btn" style="font-weight:600;font-size:13.5px;color:var(--primary);cursor:pointer;padding:10px" onclick="dismissAuthModal()">
-        ← Continue to Log Meals & History (Guest Mode)
-      </button>
-      <div style="margin-top:8px">
-        <button type="button" class="link-btn" style="font-size:12px;color:var(--ink-faint);cursor:pointer;padding:6px;text-decoration:underline" onclick="forceAppRefresh()">
-          🔄 Clear App Cache & Force Refresh
+    <!-- Elevated Card Container -->
+    <div class="card" style="border-radius:24px;padding:26px 20px;box-shadow:0 8px 30px rgba(0,0,0,0.06);border:1px solid var(--line);background:var(--card);text-align:center">
+      
+      <!-- Brand Icon & Header -->
+      <div style="width:64px;height:64px;margin:0 auto 12px;border-radius:20px;background:var(--coral-soft);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(229,87,63,0.18);font-size:32px">
+        🥗
+      </div>
+      <h1 style="font-family:var(--font-display);font-size:27px;font-weight:700;margin:0 0 6px;color:var(--ink);letter-spacing:-0.02em">${title}</h1>
+      <p class="muted small" style="margin:0 auto 20px;max-width:300px;line-height:1.45;color:var(--ink-soft)">${subtitle}</p>
+
+      <!-- Segmented Tab: Log In vs Create Account -->
+      <div class="segmented" style="margin:0 auto 20px;background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-pill);padding:4px;display:flex;gap:4px">
+        <button type="button" class="${mode==='login'?'active':''}" style="flex:1;padding:10px 14px;border-radius:var(--radius-pill);border:none;font-weight:700;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease;${mode==='login'?'background:var(--card);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,0.08)':'background:transparent;color:var(--ink-soft)'}" onclick="setAuthTab('login')">
+          <span>🔐</span><span>Log In</span>
+        </button>
+        <button type="button" class="${mode==='register'?'active':''}" style="flex:1;padding:10px 14px;border-radius:var(--radius-pill);border:none;font-weight:700;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease;${mode==='register'?'background:var(--card);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,0.08)':'background:transparent;color:var(--ink-soft)'}" onclick="setAuthTab('register')">
+          <span>✨</span><span>Create Account</span>
         </button>
       </div>
+
+      <form id="auth-form" onsubmit="event.preventDefault(); submitAuth();" style="text-align:left;display:flex;flex-direction:column;gap:13px">
+        ${mode==='register'?`
+          <div class="field" style="margin-bottom:0">
+            <label for="auth-name" style="font-weight:600;font-size:12.5px;color:var(--ink-soft)">Your Name (optional)</label>
+            <div style="position:relative;display:flex;align-items:center">
+              <span style="position:absolute;left:14px;color:var(--ink-faint);font-size:15px;pointer-events:none">👤</span>
+              <input type="text" id="auth-name" autocomplete="name" placeholder="Enter your name" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value" style="padding-left:42px">
+            </div>
+          </div>
+        `:""}
+
+        <div class="field" style="margin-bottom:0">
+          <label for="auth-email" style="font-weight:600;font-size:12.5px;color:var(--ink-soft)">Email Address</label>
+          <div style="position:relative;display:flex;align-items:center">
+            <span style="position:absolute;left:14px;color:var(--ink-faint);font-size:15px;pointer-events:none">✉️</span>
+            <input type="email" id="auth-email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value" style="padding-left:42px">
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+            <label for="auth-password" style="font-weight:600;font-size:12.5px;color:var(--ink-soft)">Password</label>
+            ${mode==='login'?`<button type="button" class="link-btn" style="font-size:12px;color:var(--coral);font-weight:600;padding:2px 4px;min-height:auto" onclick="showForgotPasswordPrompt()">Forgot password?</button>`:''}
+          </div>
+          <div style="position:relative;display:flex;align-items:center">
+            <span style="position:absolute;left:14px;color:var(--ink-faint);font-size:15px;pointer-events:none">🔒</span>
+            <input type="password" id="auth-password" autocomplete="${mode==='login'?'current-password':'new-password'}" placeholder="••••••••" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value" style="padding-left:42px;padding-right:44px">
+            <button type="button" onclick="togglePasswordVisibility()" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;padding:8px;font-size:16px;color:var(--ink-faint);touch-action:manipulation" title="Show/Hide Password" aria-label="Toggle password visibility">
+              <span id="pw-eye-icon">👁️</span>
+            </button>
+          </div>
+        </div>
+
+        ${STATE.authError?`
+          <div class="error-box" style="margin-top:2px;display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:var(--radius-md)">
+            <span>⚠️</span>
+            <span>${esc(STATE.authError)}</span>
+          </div>
+        `:""}
+
+        <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-block" style="cursor:pointer;pointer-events:auto;position:relative;z-index:20;margin-top:4px;padding:14px;font-size:15.5px;font-weight:700;box-shadow:0 4px 16px rgba(229,87,63,0.28);border-radius:var(--radius-pill);touch-action:manipulation;${STATE.authLoading?'opacity:0.8;cursor:wait':''}">
+          ${STATE.authLoading ? '⏳ Connecting to server…' : (mode==='login' ? '🔐 Log In & Access Data' : '✨ Create Free Account & Sync')}
+        </button>
+
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;font-size:11.5px;color:var(--ink-faint)">
+          <span>🛡️</span>
+          <span>Encrypted session • Fast automatic cloud sync</span>
+        </div>
+      </form>
     </div>
-    ${!RUNTIME.apiUp?`<div class="error-box" style="margin-top:20px">Can't reach the Nourish server at ${esc(API_BASE)}. Make sure the backend is running, then reload.</div>`:""}
+    
+    <!-- Guest Mode and Force Refresh Links -->
+    <div style="text-align:center;margin-top:14px">
+      <button type="button" class="btn btn-ghost btn-block" style="font-weight:600;font-size:13.5px;color:var(--ink);padding:11px 16px;background:var(--paper);border:1.5px solid var(--line);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px" onclick="dismissAuthModal()">
+        <span>← Continue to Log Meals & History</span>
+        <span class="pill" style="font-size:11px;padding:2px 8px;background:rgba(46,125,50,0.12);color:var(--leaf);border:1px solid rgba(46,125,50,0.25);font-weight:700">Guest</span>
+      </button>
+
+      <button type="button" class="link-btn" style="font-size:12px;color:var(--ink-faint);cursor:pointer;padding:4px 8px;text-decoration:underline" onclick="forceAppRefresh()">
+        🔄 Clear App Cache & Force Refresh
+      </button>
+    </div>
+
+    ${!RUNTIME.apiUp?`<div class="error-box" style="margin-top:16px">Can't reach the Nourish server at ${esc(API_BASE)}. Make sure the backend is running, then reload.</div>`:""}
   </div>`;
 }
 
