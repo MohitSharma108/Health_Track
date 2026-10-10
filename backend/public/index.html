@@ -1691,7 +1691,7 @@ function sourceBadge(source){
   const label = {ai_image:"📷 AI photo", manual:"✏️ Manual", voice:"🎙️ Voice", ocr:"🏷️ Label scan", saved:"⭐ Saved meal", ai_suggestion:"✨ AI suggested"}[source]||source;
   return `<span class="badge badge-source">${label}</span>`;
 }
-function renderEstimatedNutritionCard(m, title = "Estimated nutrition"){
+function renderEstimatedNutritionCard(m, title = "Estimated nutrition", onEditAction = null){
   if(!m) m = {};
   const cal = Math.round(m.cal != null ? m.cal : (m.calories != null ? m.calories : 0));
   const p = round1(m.p != null ? m.p : (m.protein != null ? m.protein : 0));
@@ -1699,9 +1699,12 @@ function renderEstimatedNutritionCard(m, title = "Estimated nutrition"){
   const fat = round1(m.fat != null ? m.fat : 0);
   const fib = round1(m.fib != null ? m.fib : (m.fibre != null ? m.fibre : 0));
 
-  return `<div class="card tight estimated-nutrition-card" style="background:var(--card-tint);margin:10px 0 12px;border:1px solid var(--line);border-radius:var(--radius-lg)">
+  return `<div class="card tight estimated-nutrition-card" style="background:var(--card-tint);margin:10px 0 12px;border:1px solid var(--line);border-radius:var(--radius-lg);${onEditAction?'cursor:pointer;':''}" ${onEditAction?`onclick="${onEditAction}" title="Click to edit nutrition"`:''}>
     <div class="row" style="margin-bottom:8px">
-      <b style="font-size:14px;color:var(--ink)">${esc(title)}</b>
+      <div style="display:flex;align-items:center;gap:6px">
+        <b style="font-size:14px;color:var(--ink)">${esc(title)}</b>
+        ${onEditAction?`<span style="font-size:11.5px;color:var(--coral);font-weight:700;display:inline-flex;align-items:center;gap:2px">✏️ Tap to edit</span>`:''}
+      </div>
       <b style="color:var(--coral);font-size:16px">${cal} kcal</b>
     </div>
     <div class="row" style="gap:6px;flex-wrap:wrap">
@@ -2847,7 +2850,7 @@ function sheetReviewDraftContent(){
       </button>
     </div>
 
-    ${renderEstimatedNutritionCard(t, "Estimated nutrition")}
+    ${renderEstimatedNutritionCard(t, "Estimated nutrition", items.length ? "openEditDraftItemSheet(0)" : null)}
     <div class="field" style="margin-top:10px">
       <label>Note (optional)</label>
       <textarea oninput="ensureDraft().note=this.value">${esc(d.note||"")}</textarea>
@@ -2925,7 +2928,9 @@ function sheetEditDraftItemContent(props){
   const step = qtyStep(props.unit || it.unit);
 
   let previewMacros = {cal: props.cal, p: props.p, c: props.c, fat: props.fat, fib: props.fib};
-  if(f){
+  if(props.customMacros){
+    previewMacros = Object.assign({}, previewMacros, props.customMacros);
+  } else if(f){
     previewMacros = macrosForQty(f, props.qty, props.unit);
   } else {
     const oldQty = Number(props.oldQty || it.qty) || 1;
@@ -2941,7 +2946,7 @@ function sheetEditDraftItemContent(props){
 
   return `<div class="sheet-handle"></div>
     <div class="sheet-head">
-      <h3>✏️ Edit Portion</h3>
+      <h3>✏️ Edit Portion & Nutrition</h3>
       <button class="icon-btn" onclick="openReviewDraftSheet()">${ICO.close}</button>
     </div>
 
@@ -2998,6 +3003,38 @@ function sheetEditDraftItemContent(props){
       </div>
     </div>
 
+    <!-- Direct Nutrition Overrides -->
+    <div style="margin:8px 0 12px;padding:12px;background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-lg)">
+      <div class="row" style="margin-bottom:8px">
+        <span style="font-weight:700;font-size:13px;color:var(--ink)">✏️ Adjust Calories & Macros Directly</span>
+        <span class="muted small">Tap to override</span>
+      </div>
+      <div class="row" style="gap:8px;margin-bottom:8px">
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Calories (kcal)</label>
+          <input type="number" value="${previewMacros.cal}" style="font-weight:700;color:var(--coral)" oninput="setCustomEditMacro('cal', this.value)">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Protein (g)</label>
+          <input type="number" step="0.1" value="${previewMacros.p}" style="font-weight:700" oninput="setCustomEditMacro('p', this.value)">
+        </div>
+      </div>
+      <div class="row" style="gap:8px">
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Carbs (g)</label>
+          <input type="number" step="0.1" value="${previewMacros.c}" style="font-weight:700" oninput="setCustomEditMacro('c', this.value)">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Fat (g)</label>
+          <input type="number" step="0.1" value="${previewMacros.fat}" style="font-weight:700" oninput="setCustomEditMacro('fat', this.value)">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Fibre (g)</label>
+          <input type="number" step="0.1" value="${previewMacros.fib}" style="font-weight:700" oninput="setCustomEditMacro('fib', this.value)">
+        </div>
+      </div>
+    </div>
+
     <!-- Nutrition Preview Card -->
     ${renderEstimatedNutritionCard(previewMacros, "Estimated nutrition")}
 
@@ -3015,6 +3052,15 @@ function sheetEditDraftItemContent(props){
         </button>
       </div>
     </div>`;
+}
+
+function setCustomEditMacro(key, val){
+  const props = STATE.sheet.props;
+  props.customMacros = props.customMacros || {
+    cal: props.cal, p: props.p, c: props.c, fat: props.fat, fib: props.fib
+  };
+  props.customMacros[key] = Math.max(0, Number(val)||0);
+  refreshSheet();
 }
 
 function stepEditItemQty(delta){
@@ -3052,7 +3098,18 @@ function saveEditedDraftItem(idx){
   it.unit = props.unit || it.unit;
   if(props.name && !it.foodId) it.name = props.name.trim();
 
-  if(f){
+  if(props.customMacros){
+    it.macros = {
+      cal: Math.round(Number(props.customMacros.cal != null ? props.customMacros.cal : (it.macros||{}).cal)||0),
+      p: round1(Number(props.customMacros.p != null ? props.customMacros.p : (it.macros||{}).p)||0),
+      c: round1(Number(props.customMacros.c != null ? props.customMacros.c : (it.macros||{}).c)||0),
+      fat: round1(Number(props.customMacros.fat != null ? props.customMacros.fat : (it.macros||{}).fat)||0),
+      fib: round1(Number(props.customMacros.fib != null ? props.customMacros.fib : (it.macros||{}).fib)||0),
+      sug: (it.macros||{}).sug || 0,
+      sat: (it.macros||{}).sat || 0,
+      sod: (it.macros||{}).sod || 0
+    };
+  } else if(f){
     it.macros = macrosForQty(f, it.qty, it.unit);
   } else {
     const oldQty = Number(props.oldQty || it.qty) || 1;
@@ -3065,7 +3122,7 @@ function saveEditedDraftItem(idx){
       fib: round1(((it.macros||{}).fib || 0) * ratio)
     };
   }
-  toast(`Updated portion for ${it.name}`);
+  toast(`Updated portion and nutrition for ${it.name}`);
   openReviewDraftSheet();
 }
 
@@ -3121,10 +3178,10 @@ function sheetMealDetailContent(props){
     ${m.imageUrl?`<img src="${esc(m.imageUrl)}" style="width:100%;border-radius:var(--radius-md);margin-bottom:12px;max-height:200px;object-fit:cover">`:""}
     <div class="section-label" style="display:flex;justify-content:space-between;align-items:center;margin:10px 2px 6px">
       <span>Logged items (${(m.items||[]).length})</span>
-      <span class="muted small" style="color:var(--coral);font-weight:600;cursor:pointer" onclick="editMealDraft('${m.id}')">✏️ Edit portions</span>
+      <span class="muted small" style="color:var(--coral);font-weight:600;cursor:pointer" onclick="openEditQuickMealSheet('${m.id}')">✏️ Quick Edit Numbers</span>
     </div>
     <div class="card tight">
-      ${(m.items||[]).map(it=>`<div class="list-item" style="cursor:pointer" onclick="editMealDraft('${m.id}')" title="Click to edit meal">
+      ${(m.items||[]).map(it=>`<div class="list-item" style="cursor:pointer" onclick="openEditQuickMealSheet('${m.id}')" title="Click to edit nutrition">
         <div class="thumb">🍽️</div>
         <div style="flex:1;min-width:0">
           <div class="item-title">${esc(it.name)}</div>
@@ -3134,7 +3191,7 @@ function sheetMealDetailContent(props){
         ${it.confidence!=null?confBadge(it.confidence):""}
       </div>`).join("")}
     </div>
-    ${renderEstimatedNutritionCard(t, "Estimated nutrition")}
+    ${renderEstimatedNutritionCard(t, "Estimated nutrition", "openEditQuickMealSheet('" + m.id + "')")}
     <div class="card tight" style="margin-top:6px;background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-md)">
       <div class="section-label" style="margin:2px 0 6px;font-size:12px">Detailed nutrients</div>
       <table class="nutri-table" style="font-size:12.5px">
@@ -3144,9 +3201,14 @@ function sheetMealDetailContent(props){
       </table>
     </div>
     ${m.note?`<p class="small muted" style="margin-top:8px">📝 ${esc(m.note)}</p>`:""}
-    <button class="btn btn-primary btn-block" style="margin-top:14px;font-weight:700" onclick="editMealDraft('${m.id}')">
-      ✏️ Edit Meal & Portions
-    </button>
+    <div class="stack" style="gap:8px;margin-top:14px">
+      <button class="btn btn-primary btn-block" style="font-weight:700" onclick="openEditQuickMealSheet('${m.id}')">
+        ⚡ Edit Calories & Macros (${Math.round(t.cal)} kcal)
+      </button>
+      <button class="btn btn-outline btn-block" style="font-weight:700" onclick="editMealDraft('${m.id}')">
+        🍽️ Edit Meal Items & Portions
+      </button>
+    </div>
     <div class="choice-grid c3" style="margin-top:8px">
       <button class="btn btn-outline btn-sm" onclick="duplicateMeal('${m.id}')">Repeat today</button>
       <button class="btn btn-outline btn-sm" onclick="favouriteMeal('${m.id}')">${ICO.star} Favourite</button>
@@ -3181,6 +3243,167 @@ async function deleteMeal(mealId){
   await StorageService.deleteFromCollection("meals", mealId);
   closeSheet(); toast("Meal deleted");
   await loadMealsForDate(STATE.selectedDate); await refreshAllMealsCache(); render();
+}
+
+function openEditQuickMealSheet(mealId){
+  const m = (STATE.todaysMeals||[]).find(x=>x.id===mealId) || (STATE._allMealsCache||[]).find(x=>x.id===mealId);
+  if(!m){ toast("Meal not found"); return; }
+  const t = m.totals || sumMacros((m.items||[]).map(i=>i.macros));
+  const firstItem = (m.items && m.items[0]) || {};
+  openSheet("editQuickMeal", {
+    mealId: m.id,
+    name: m.note || firstItem.name || (m.mealType + " meal"),
+    mealType: m.mealType || suggestMealType(),
+    cal: Math.round(t.cal || 0),
+    protein: round1(t.p || 0),
+    carbs: round1(t.c || 0),
+    fat: round1(t.fat || 0),
+    fib: round1(t.fib || 0),
+    originalMeal: m
+  });
+}
+
+function sheetEditQuickMealContent(props){
+  const p = props;
+  const cal = Number(p.cal) || 0;
+  const prot = Number(p.protein) || 0;
+  const carb = Number(p.carbs) || 0;
+  const fat = Number(p.fat) || 0;
+  const fib = Number(p.fib) || 0;
+
+  return `<div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h3>✏️ Edit Calories & Macros</h3>
+      <button class="icon-btn" onclick="openMealDetail('${props.mealId}')">${ICO.close}</button>
+    </div>
+    <p class="muted small" style="margin:-4px 0 14px">Directly update calories, macros, or description for this meal.</p>
+
+    <div class="field">
+      <label>Calories (kcal) *</label>
+      <input type="number" id="edit-meal-cal-input" placeholder="e.g. 500" value="${p.cal}" style="font-size:18px;font-weight:800;color:var(--coral)" oninput="STATE.sheet.props.cal=this.value; updateEditQuickMealPreview()">
+    </div>
+
+    <div class="field">
+      <label>Meal / Item Description</label>
+      <input type="text" placeholder="e.g. Cafe snack, muffin, grilled chicken" value="${esc(p.name||'')}" oninput="STATE.sheet.props.name=this.value">
+    </div>
+
+    <div class="row" style="gap:8px">
+      <div class="field" style="flex:1">
+        <label>Protein (g)</label>
+        <input type="number" step="0.1" placeholder="0" value="${p.protein}" oninput="STATE.sheet.props.protein=this.value; updateEditQuickMealPreview()">
+      </div>
+      <div class="field" style="flex:1">
+        <label>Carbs (g)</label>
+        <input type="number" step="0.1" placeholder="0" value="${p.carbs}" oninput="STATE.sheet.props.carbs=this.value; updateEditQuickMealPreview()">
+      </div>
+      <div class="field" style="flex:1">
+        <label>Fat (g)</label>
+        <input type="number" step="0.1" placeholder="0" value="${p.fat}" oninput="STATE.sheet.props.fat=this.value; updateEditQuickMealPreview()">
+      </div>
+      <div class="field" style="flex:1">
+        <label>Fibre (g)</label>
+        <input type="number" step="0.1" placeholder="0" value="${p.fib}" oninput="STATE.sheet.props.fib=this.value; updateEditQuickMealPreview()">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Meal category</label>
+      <div class="chip-row">
+        ${MEAL_TYPES.map(mt=>`<span class="chip ${p.mealType===mt?'active':''}" onclick="STATE.sheet.props.mealType='${mt}'; refreshSheet()">${MEAL_ICON[mt]} ${mt}</span>`).join("")}
+      </div>
+    </div>
+
+    <div id="editQuickMealLivePreview" style="margin-top:6px">
+      ${renderEstimatedNutritionCard({cal, p:prot, c:carb, fat, fib}, "Updated nutrition")}
+    </div>
+
+    <div class="stack" style="gap:8px;margin-top:14px">
+      <button class="btn btn-primary btn-block" style="font-weight:700" onclick="saveQuickMealEdits('${props.mealId}')">
+        Save Changes (${cal} kcal)
+      </button>
+      <button class="btn btn-ghost btn-block" onclick="openMealDetail('${props.mealId}')">
+        Cancel
+      </button>
+    </div>`;
+}
+
+function updateEditQuickMealPreview(){
+  const p = (STATE.sheet && STATE.sheet.props) || {};
+  const el = document.getElementById("editQuickMealLivePreview");
+  if(el){
+    const cal = Number(p.cal)||0;
+    const prot = Number(p.protein)||0;
+    const carb = Number(p.carbs)||0;
+    const fat = Number(p.fat)||0;
+    const fib = Number(p.fib)||0;
+    el.innerHTML = renderEstimatedNutritionCard({cal, p:prot, c:carb, fat, fib}, "Updated nutrition");
+  }
+}
+
+async function saveQuickMealEdits(mealId){
+  const p = STATE.sheet.props;
+  const m = p.originalMeal || (STATE.todaysMeals||[]).find(x=>x.id===mealId) || (STATE._allMealsCache||[]).find(x=>x.id===mealId);
+  if(!m){ toast("Meal not found"); return; }
+  const cal = Math.max(0, Math.round(Number(p.cal)||0));
+  const prot = Math.max(0, round1(Number(p.protein)||0));
+  const carb = Math.max(0, round1(Number(p.carbs)||0));
+  const fat = Math.max(0, round1(Number(p.fat)||0));
+  const fib = Math.max(0, round1(Number(p.fib)||0));
+
+  const updatedMacros = {cal, p:prot, c:carb, fat, fib, sug: (m.totals||{}).sug||0, sat: (m.totals||{}).sat||0, sod: (m.totals||{}).sod||0};
+  const mealName = (p.name||"").trim() || m.mealType || "Quick meal";
+
+  let updatedItems = [];
+  if(m.items && m.items.length === 1){
+    updatedItems = [{
+      ...m.items[0],
+      name: mealName,
+      macros: updatedMacros
+    }];
+  } else if(m.items && m.items.length > 1){
+    const oldCal = (m.totals && m.totals.cal) || sumMacros(m.items.map(i=>i.macros)).cal || 1;
+    const ratio = cal / (oldCal > 0 ? oldCal : 1);
+    updatedItems = m.items.map(it => ({
+      ...it,
+      macros: {
+        cal: Math.round(((it.macros||{}).cal||0) * ratio),
+        p: round1(((it.macros||{}).p||0) * ratio),
+        c: round1(((it.macros||{}).c||0) * ratio),
+        fat: round1(((it.macros||{}).fat||0) * ratio),
+        fib: round1(((it.macros||{}).fib||0) * ratio),
+        sug: round1(((it.macros||{}).sug||0) * ratio),
+        sat: round1(((it.macros||{}).sat||0) * ratio),
+        sod: Math.round(((it.macros||{}).sod||0) * ratio)
+      }
+    }));
+  } else {
+    updatedItems = [{
+      foodId: null,
+      name: mealName,
+      qty: 1,
+      unit: "serving",
+      macros: updatedMacros,
+      source: "manual"
+    }];
+  }
+
+  const updatedMeal = {
+    ...m,
+    mealType: p.mealType || m.mealType,
+    note: mealName,
+    totals: updatedMacros,
+    items: updatedItems,
+    updatedAt: Date.now()
+  };
+
+  await StorageService.setInCollection("meals", mealId, updatedMeal);
+  toast(`✨ Saved! Updated to ${cal} kcal`);
+  closeSheet();
+  await loadMealsForDate(m.date || STATE.selectedDate);
+  await refreshAllMealsCache();
+  checkGoalNotifications();
+  render();
 }
 /* ============================================================
    SCAN — AI food image recognition
@@ -3733,9 +3956,24 @@ function sheetSavedMealsContent(){
       return `<div class="list-item" style="cursor:pointer" onclick="repeatSavedMeal('${f.id}')">
         <div class="thumb">${MEAL_ICON[f.mealType]||"🍽️"}</div>
         <div style="flex:1;min-width:0"><div class="item-title">${esc(f.name)}</div><div class="item-sub">${Math.round(t.cal)} kcal · ${f.mealType}</div></div>
-        <span style="color:var(--coral)">${ICO.plus}</span>
+        <div style="display:flex;align-items:center;gap:4px">
+          <button type="button" class="icon-btn" style="width:32px;height:32px;color:var(--coral)" onclick="event.stopPropagation(); editSavedMeal('${f.id}')" title="Edit saved meal">✏️</button>
+          <span style="color:var(--coral)">${ICO.plus}</span>
+        </div>
       </div>`;
     }).join("")}</div>`;
+}
+function editSavedMeal(favId){
+  const f = STATE.favorites.find(x=>x.id===favId); if(!f) return;
+  STATE.draftMeal = {
+    mealType: f.mealType,
+    date: STATE.selectedDate,
+    note: f.name,
+    items: (f.items||[]).map(i=>Object.assign({id:uid()}, i)),
+    favId: f.id
+  };
+  closeSheet();
+  openReviewDraftSheet();
 }
 async function repeatSavedMeal(favId){
   const f = STATE.favorites.find(x=>x.id===favId); if(!f) return;
@@ -5401,7 +5639,7 @@ function renderSheetContent(){
   const fns = {
     addFood: sheetAddFoodContent, customFood: sheetCustomFoodContent, reviewDraft: sheetReviewDraftContent,
     editDraftItem: sheetEditDraftItemContent,
-    mealDetail: sheetMealDetailContent, voiceLog: sheetVoiceLogContent, labelScan: sheetLabelScanContent,
+    mealDetail: sheetMealDetailContent, editQuickMeal: sheetEditQuickMealContent, voiceLog: sheetVoiceLogContent, labelScan: sheetLabelScanContent,
     savedMeals: sheetSavedMealsContent, addIngredient: sheetAddIngredientContent, ingredientQty: sheetIngredientQtyContent,
     addMissingItem: sheetAddMissingItemContent, editScanItem: sheetEditScanItemContent, whatToEat: sheetWhatToEatContent,
     importRecipe: sheetImportRecipeContent,
