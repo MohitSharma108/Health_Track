@@ -1619,12 +1619,21 @@ function renderOnboarding(){
   const step = STATE.onboard.step, d = STATE.onboard.data;
   const totalSteps = 6;
   if(step===0){
-    return `<div class="screen" style="padding-top:18vh;text-align:center">
-      <div style="font-size:46px;margin-bottom:6px">🥗</div>
-      <h1 style="font-size:30px;margin-bottom:10px">Nourish</h1>
-      <p class="muted" style="max-width:320px;margin:0 auto 30px;line-height:1.5">Snap a photo, say what you ate, or scan a label — Nourish estimates the nutrition and tracks it against your goals, automatically.</p>
-      <button class="btn btn-primary btn-block" onclick="STATE.onboard.step=1; render()">Get started</button>
-      <p class="disclaimer" style="margin-top:16px">AI-estimated nutrition, not medical advice.</p>
+    return `<div class="screen" style="padding-top:14vh;text-align:center;max-width:380px;margin:0 auto">
+      <div style="font-size:50px;margin-bottom:8px">🥗</div>
+      <h1 style="font-size:32px;margin-bottom:8px">Nourish</h1>
+      <p class="muted" style="max-width:320px;margin:0 auto 26px;line-height:1.5">Snap a photo, say what you ate, or scan a label — Nourish estimates the nutrition and tracks it against your goals, automatically.</p>
+      
+      <div class="stack" style="gap:10px;margin-bottom:16px">
+        <button class="btn btn-primary btn-block" style="font-size:15.5px;padding:14px;font-weight:700" onclick="STATE.onboard.step=1; render()">
+          ✨ Get Started (7-Day Free Pass)
+        </button>
+        <button class="btn btn-outline btn-block" style="font-size:14.5px;padding:13px;font-weight:700;background:var(--card)" onclick="openAuthModal('login')">
+          🔐 Already Have an Account? Log In
+        </button>
+      </div>
+
+      <p class="disclaimer" style="margin-top:12px">AI-estimated nutrition, not medical advice.</p>
     </div>`;
   }
   let body = "";
@@ -1691,7 +1700,12 @@ function renderOnboarding(){
       </div>`;
   }
   return `<div class="onb-progress">${Array.from({length:totalSteps}).map((_,i)=>`<div class="${i<step?'done':''}"></div>`).join("")}</div>
-    <div class="screen" style="padding-top:14px">
+    <div class="screen" style="padding-top:12px">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+        <button type="button" class="link-btn" style="font-size:12.5px;color:var(--ink-faint);padding:4px 8px;min-height:32px" onclick="openAuthModal('login')">
+          Already have an account? <span style="color:var(--coral);font-weight:700;margin-left:4px">Log In</span>
+        </button>
+      </div>
       ${body}
       <div class="row" style="gap:10px;margin-top:22px">
         <button class="btn btn-ghost" onclick="onbBack()">Back</button>
