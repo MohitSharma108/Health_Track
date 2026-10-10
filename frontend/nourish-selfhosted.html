@@ -841,10 +841,19 @@ function unitToGrams(food, qty, unit){
   return qty*g;
 }
 function macrosForGrams(food, grams){
-  const f = grams/100;
+  const f = (grams||0)/100;
+  const p100 = (food && food.per100) || {};
+  const cal = p100.cal != null ? p100.cal : (p100.calories != null ? p100.calories : 0);
+  const p = p100.p != null ? p100.p : (p100.proteinG != null ? p100.proteinG : (p100.protein != null ? p100.protein : 0));
+  const c = p100.c != null ? p100.c : (p100.carbsG != null ? p100.carbsG : (p100.carbs != null ? p100.carbs : 0));
+  const fat = p100.f != null ? p100.f : (p100.fatG != null ? p100.fatG : (p100.fat != null ? p100.fat : 0));
+  const fib = p100.fib != null ? p100.fib : (p100.fibreG != null ? p100.fibreG : (p100.fibre != null ? p100.fibre : 0));
+  const sug = p100.sug != null ? p100.sug : (p100.sugarG != null ? p100.sugarG : (p100.sugar != null ? p100.sugar : 0));
+  const sat = p100.sat != null ? p100.sat : (p100.satFatG != null ? p100.satFatG : (p100.satFat != null ? p100.satFat : 0));
+  const sod = p100.sod != null ? p100.sod : (p100.sodiumMg != null ? p100.sodiumMg : (p100.sodium != null ? p100.sodium : 0));
   return {
-    cal: food.per100.cal*f, p: food.per100.p*f, c: food.per100.c*f, fat: food.per100.f*f,
-    fib: food.per100.fib*f, sug:(food.per100.sug||0)*f, sat:(food.per100.sat||0)*f, sod:(food.per100.sod||0)*f,
+    cal: cal * f, p: p * f, c: c * f, fat: fat * f,
+    fib: fib * f, sug: sug * f, sat: sat * f, sod: sod * f,
   };
 }
 function macrosForQty(food, qty, unit){ return macrosForGrams(food, unitToGrams(food, qty, unit)); }
@@ -906,11 +915,15 @@ function feItemToBe(it){
   const out = {name:it.name, qty:it.qty, unit:it.unit, source:it.source||"manual"};
   if(it.confidence!=null) out.confidence = it.confidence;
   if(it.foodId){ out.foodId = it.foodId; }
-  else{
-    const m = it.macros||{};
-    out.calories=m.cal||0; out.proteinG=m.p||0; out.carbsG=m.c||0; out.fatG=m.fat||0; out.fibreG=m.fib||0;
-    out.sugarG=m.sug||0; out.satFatG=m.sat||0; out.sodiumMg=m.sod||0;
-  }
+  const m = it.macros||{};
+  out.calories = Math.round(m.cal||0);
+  out.proteinG = round1(m.p||0);
+  out.carbsG = round1(m.c||0);
+  out.fatG = round1(m.fat||0);
+  out.fibreG = round1(m.fib||0);
+  out.sugarG = round1(m.sug||0);
+  out.satFatG = round1(m.sat||0);
+  out.sodiumMg = Math.round(m.sod||0);
   return out;
 }
 function beItemToFe(it){
@@ -933,9 +946,11 @@ function beRecipeToFe(r){
 }
 function beNotifToFe(n){ return {id:n.id, type:n.type, title:n.title, body:n.body, read:n.read, createdAt:new Date(n.createdAt).getTime()}; }
 function beFoodToFe(f){
+  const n = (f && f.nutrients) || {};
+  const servings = (f && f.servings) || [];
   return {id:f.id, name:f.name, cat:f.category, isProduct:f.isProduct, custom:f.isCustom,
-    per100:{cal:f.nutrients.calories, p:f.nutrients.proteinG, c:f.nutrients.carbsG, f:f.nutrients.fatG, fib:f.nutrients.fibreG, sug:f.nutrients.sugarG, sat:f.nutrients.satFatG, sod:f.nutrients.sodiumMg},
-    serving: f.servings[0] || {qty:1, unit:"serving", grams:100, label:"1 serving"}};
+    per100:{cal:n.calories||0, p:n.proteinG||0, c:n.carbsG||0, f:n.fatG||0, fib:n.fibreG||0, sug:n.sugarG||0, sat:n.satFatG||0, sod:n.sodiumMg||0},
+    serving: servings[0] || {qty:1, unit:"serving", grams:100, label:"1 serving"}};
 }
 
 /* ============================================================
@@ -965,7 +980,8 @@ const StorageService = {
       if(path==="profile/main"){
         const {profile, goals} = await apiGet("/profile");
         if(!profile) return LocalFallback.store[path] || null;
-        const res = Object.assign({}, profile, {targets: goals ? {calories:goals.calories, protein:goals.proteinG, carbs:goals.carbsG, fat:goals.fatG, fibre:goals.fibreG} : null});
+        const tg = goals ? {calories:goals.calories, protein:goals.proteinG, carbs:goals.carbsG, fat:goals.fatG, fibre:goals.fibreG} : ((LocalFallback.store[path] && LocalFallback.store[path].targets) || {calories:2000, protein:120, carbs:220, fat:65, fibre:30});
+        const res = Object.assign({}, profile, {targets: tg});
         LocalFallback.store[path] = res; saveLocalFallback();
         return res;
       }
@@ -1287,11 +1303,18 @@ function sourceBadge(source){
   return `<span class="badge badge-source">${label}</span>`;
 }
 function macroChipsRow(m){
+  // Normalize both frontend {cal,p,c,fat} and AI response {calories,protein,carbs,fat} formats
+  const cal = m.cal != null ? m.cal : (m.calories != null ? m.calories : 0);
+  const prot = m.p != null ? m.p : (m.protein != null ? m.protein : 0);
+  const carb = m.c != null ? m.c : (m.carbs != null ? m.carbs : 0);
+  const fat = m.fat != null ? m.fat : 0;
+  const fib = m.fib != null ? m.fib : (m.fibre != null ? m.fibre : 0);
   return `<div class="chip-row small">
-    <span class="chip" style="cursor:default">🔥 ${Math.round(m.cal)} kcal</span>
-    <span class="chip" style="cursor:default">P ${round1(m.p)}g</span>
-    <span class="chip" style="cursor:default">C ${round1(m.c)}g</span>
-    <span class="chip" style="cursor:default">F ${round1(m.fat)}g</span>
+    <span class="chip" style="cursor:default">🔥 ${Math.round(cal)} kcal</span>
+    <span class="chip" style="cursor:default">P ${round1(prot)}g</span>
+    <span class="chip" style="cursor:default">C ${round1(carb)}g</span>
+    <span class="chip" style="cursor:default">F ${round1(fat)}g</span>
+    ${fib > 0 ? `<span class="chip" style="cursor:default">Fib ${round1(fib)}g</span>` : ''}
   </div>`;
 }
 
@@ -2242,8 +2265,9 @@ function stepQty(delta){
 function setQtyMultiplier(mult){
   const props = STATE.sheet.props;
   const f = findFoodById(props.foodId);
-  const base = f.serving ? f.serving.qty : 1;
+  const base = (f && f.serving) ? f.serving.qty : 1;
   props.qty = round1(base*mult);
+  if(f && f.serving && f.serving.unit) props.unit = f.serving.unit;
   refreshSheet();
 }
 function confirmAddFood(){
@@ -4017,7 +4041,12 @@ async function fetchEatNow(){
 }
 async function addEatSuggestion(idx){
   const o = STATE.eat.options[idx];
-  const macros = {cal:o.calories,p:o.protein,c:o.carbs,fat:o.fat,fib:o.fibre||0,sug:0,sat:0,sod:0};
+  const cal = Math.round(parseFloat(o.calories) || 0);
+  const p = round1(parseFloat(o.protein) || 0);
+  const c = round1(parseFloat(o.carbs) || 0);
+  const fat = round1(parseFloat(o.fat) || 0);
+  const fib = round1(parseFloat(o.fibre) || 0);
+  const macros = {cal, p, c, fat, fib, sug:0, sat:0, sod:0};
   const meal = {date:STATE.selectedDate, time:nowTime(), mealType:suggestMealType(), items:[{foodId:null,name:o.name,qty:1,unit:"serving",macros,source:"ai_suggestion",confidence:null}], totals:macros, source:"ai_suggestion", note:o.description, createdAt:Date.now()};
   await StorageService.addToCollection("meals", meal);
   closeSheet(); toast("Added to today's plan");
@@ -4060,7 +4089,12 @@ async function regenPlanMeal(idx){
 async function addWholePlan(){
   const tomorrow = addDays(todayStr(),1);
   for(const m of STATE.eat.plan.meals){
-    const macros = {cal:m.calories,p:m.protein,c:m.carbs,fat:m.fat,fib:m.fibre||0,sug:0,sat:0,sod:0};
+    const cal = Math.round(parseFloat(m.calories) || 0);
+    const p = round1(parseFloat(m.protein) || 0);
+    const c = round1(parseFloat(m.carbs) || 0);
+    const fat = round1(parseFloat(m.fat) || 0);
+    const fib = round1(parseFloat(m.fibre) || 0);
+    const macros = {cal, p, c, fat, fib, sug:0, sat:0, sod:0};
     const meal = {date:tomorrow, time:"", mealType:m.mealType, items:[{foodId:null,name:m.name,qty:1,unit:"serving",macros,source:"ai_suggestion",confidence:null}], totals:macros, source:"ai_suggestion", note:m.description, createdAt:Date.now()};
     await StorageService.addToCollection("meals", meal);
   }

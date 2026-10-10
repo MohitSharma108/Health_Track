@@ -116,6 +116,17 @@ router.post(
   })
 );
 
+function normalizeTargets(t) {
+  const raw = t || {};
+  return {
+    calories: raw.calories || 2000,
+    proteinG: raw.proteinG != null ? raw.proteinG : (raw.protein != null ? raw.protein : 120),
+    carbsG: raw.carbsG != null ? raw.carbsG : (raw.carbs != null ? raw.carbs : 220),
+    fatG: raw.fatG != null ? raw.fatG : (raw.fat != null ? raw.fat : 65),
+    fibreG: raw.fibreG != null ? raw.fibreG : (raw.fibre != null ? raw.fibre : 30),
+  };
+}
+
 router.post(
   '/plan-day',
   asyncHandler(async (req, res) => {
@@ -134,7 +145,7 @@ router.post(
     }
     const body = req.body || {};
     const ctx = {
-      targets: body.targets || goals || { calories: 2000, proteinG: 120, carbsG: 220, fatG: 65, fibreG: 30 },
+      targets: normalizeTargets(body.targets || goals),
       diet: body.diet || (profile && profile.diet) || 'balanced',
       allergies: body.allergies || (profile && profile.allergies) || [],
       dislikes: body.dislikes || (profile && profile.dislikes) || [],
@@ -168,7 +179,7 @@ router.post(
     }
     const body = req.body || {};
     const ctx = {
-      targets: body.targets || goals || { calories: 2000, proteinG: 120, carbsG: 220, fatG: 65, fibreG: 30 },
+      targets: normalizeTargets(body.targets || goals),
       diet: body.diet || (profile && profile.diet) || 'balanced',
       allergies: (profile && profile.allergies) || [],
       dislikes: (profile && profile.dislikes) || [],
@@ -206,8 +217,26 @@ async function buildEatContext(userId, clientCtx = {}) {
     }
   }
 
-  if (clientCtx && clientCtx.targets) g = { ...g, ...clientCtx.targets };
-  if (clientCtx && clientCtx.consumed) totals = { ...totals, ...clientCtx.consumed };
+  if (clientCtx && clientCtx.targets) {
+    const ct = clientCtx.targets;
+    g = {
+      calories: ct.calories != null ? ct.calories : g.calories,
+      proteinG: ct.proteinG != null ? ct.proteinG : (ct.protein != null ? ct.protein : g.proteinG),
+      carbsG: ct.carbsG != null ? ct.carbsG : (ct.carbs != null ? ct.carbs : g.carbsG),
+      fatG: ct.fatG != null ? ct.fatG : (ct.fat != null ? ct.fat : g.fatG),
+      fibreG: ct.fibreG != null ? ct.fibreG : (ct.fibre != null ? ct.fibre : g.fibreG),
+    };
+  }
+  if (clientCtx && clientCtx.consumed) {
+    const cc = clientCtx.consumed;
+    totals = {
+      calories: cc.calories != null ? cc.calories : totals.calories,
+      proteinG: cc.proteinG != null ? cc.proteinG : (cc.protein != null ? cc.protein : totals.proteinG),
+      carbsG: cc.carbsG != null ? cc.carbsG : (cc.carbs != null ? cc.carbs : totals.carbsG),
+      fatG: cc.fatG != null ? cc.fatG : (cc.fat != null ? cc.fat : totals.fatG),
+      fibreG: cc.fibreG != null ? cc.fibreG : (cc.fibre != null ? cc.fibre : totals.fibreG),
+    };
+  }
   if (clientCtx && clientCtx.mealsAlreadyToday) {
     meals = clientCtx.mealsAlreadyToday.map((m) => (typeof m === 'string' ? { mealType: m } : m));
   }
@@ -215,11 +244,11 @@ async function buildEatContext(userId, clientCtx = {}) {
   if (clientCtx && clientCtx.goal) p.goal = clientCtx.goal;
 
   const remaining = (clientCtx && clientCtx.remaining) || {
-    calories: Math.max(0, Math.round(g.calories - totals.calories)),
-    protein: Math.max(0, Math.round(g.proteinG - totals.proteinG)),
-    carbs: Math.max(0, Math.round(g.carbsG - totals.carbsG)),
-    fat: Math.max(0, Math.round(g.fatG - totals.fatG)),
-    fibre: Math.max(0, Math.round(g.fibreG - totals.fibreG)),
+    calories: Math.max(0, Math.round(g.calories - (totals.calories || 0))),
+    protein: Math.max(0, Math.round(g.proteinG - (totals.proteinG || 0))),
+    carbs: Math.max(0, Math.round(g.carbsG - (totals.carbsG || 0))),
+    fat: Math.max(0, Math.round(g.fatG - (totals.fatG || 0))),
+    fibre: Math.max(0, Math.round(g.fibreG - (totals.fibreG || 0))),
   };
 
   return {
@@ -279,7 +308,7 @@ router.post(
     }
     const ctx = {
       date: req.body.date,
-      targets: goals || { calories: 2000, proteinG: 120, carbsG: 220, fatG: 65, fibreG: 30 },
+      targets: normalizeTargets(goals),
       consumed: totals || { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, fibreG: 0 },
       mealsLogged: meals,
     };
@@ -328,7 +357,7 @@ router.post(
       weekday: stats.avgWeekdayCalories,
       weekend: stats.avgWeekendCalories,
       topFoods: (stats.topFoods || []).map((f) => (typeof f === 'string' ? f : f.name)),
-      targets: goals || { calories: 2000, proteinG: 120, carbsG: 220, fatG: 65, fibreG: 30 },
+      targets: normalizeTargets(goals),
     };
     const result = await analysisService.weeklyInsights(ctx);
     await logAiRecommendation(req.userId, 'weekly_insights', ctx, result);
