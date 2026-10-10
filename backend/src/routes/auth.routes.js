@@ -5,7 +5,7 @@ const prisma = require('../lib/prisma');
 const { hashPassword, verifyPassword } = require('../lib/password');
 const { signAccessToken } = require('../lib/jwt');
 const { validate } = require('../middleware/validate');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { asyncHandler, ApiError } = require('../middleware/errorHandler');
 const { authLimiter } = require('../middleware/rateLimit');
 
@@ -81,6 +81,14 @@ router.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     res.json({ id: req.userId, email: req.userEmail });
+  })
+);
+
+router.post(
+  '/logout',
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    res.json({ ok: true, message: 'Logged out successfully.' });
   })
 );
 
