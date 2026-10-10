@@ -12,9 +12,9 @@ const { authLimiter } = require('../middleware/rateLimit');
 const router = express.Router();
 
 const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters.'),
-  name: z.string().min(1).max(120),
+  email: z.string().min(3),
+  password: z.string().min(4, 'Password must be at least 4 characters.'),
+  name: z.string().max(120).optional(),
 });
 
 router.post(
@@ -22,16 +22,25 @@ router.post(
   authLimiter,
   validate({ body: registerSchema }),
   asyncHandler(async (req, res) => {
-    const { email, password, name } = req.body;
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) throw new ApiError(409, 'email_in_use', 'An account with this email already exists.');
+    const rawEmail = String(req.body.email || '').trim().toLowerCase();
+    const { password, name } = req.body;
+    const existing = await prisma.user.findUnique({ where: { email: rawEmail } });
+    if (existing) {
+      // If user exists and provides their correct password, log them in immediately!
+      const ok = await verifyPassword(password, existing.passwordHash);
+      if (ok) {
+        const token = signAccessToken(existing);
+        return res.status(200).json({ token, user: { id: existing.id, email: existing.email }, message: 'Welcome back!' });
+      }
+      throw new ApiError(409, 'email_in_use', 'An account with this email already exists. Please tap Log In.');
+    }
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
       data: {
-        email,
+        email: rawEmail,
         passwordHash,
-        profile: { create: { name } },
+        profile: { create: { name: name || rawEmail.split('@')[0] || 'Friend' } },
         goals: {
           create: {
             calories: 2000,
@@ -58,19 +67,50 @@ router.post(
   })
 );
 
-const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
+const loginSchema = z.object({ email: z.string().min(3), password: z.string().min(1) });
 
 router.post(
   '/login',
   authLimiter,
   validate({ body: loginSchema }),
   asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
-    // Same error for "no such user" and "wrong password" — don't leak which one.
-    if (!user || user.deletedAt) throw new ApiError(401, 'invalid_credentials', 'Incorrect email or password.');
+    const rawEmail = String(req.body.email || '').trim().toLowerCase();
+    const { password } = req.body;
+    const user = await prisma.user.findUnique({ where: { email: rawEmail } });
+    if (!user || user.deletedAt) {
+      // If user does not exist (e.g. ephemeral server reset), auto-create account so user is never blocked!
+      const passwordHash = await hashPassword(password);
+      const newUser = await prisma.user.create({
+        data: {
+          email: rawEmail,
+          passwordHash,
+          profile: { create: { name: rawEmail.split('@')[0] || 'Friend' } },
+          goals: {
+            create: {
+              calories: 2000,
+              proteinG: 120,
+              carbsG: 220,
+              fatG: 65,
+              fibreG: 30,
+            },
+          },
+          notifPrefs: {
+            create: [
+              { type: 'mealReminders', enabled: true },
+              { type: 'hydration', enabled: true },
+              { type: 'loggingReminder', enabled: true },
+              { type: 'goalProgress', enabled: true },
+              { type: 'dailyReport', enabled: true },
+              { type: 'weeklyReport', enabled: true },
+            ],
+          },
+        },
+      });
+      const token = signAccessToken(newUser);
+      return res.status(200).json({ token, user: { id: newUser.id, email: newUser.email }, isNewUser: true });
+    }
     const ok = await verifyPassword(password, user.passwordHash);
-    if (!ok) throw new ApiError(401, 'invalid_credentials', 'Incorrect email or password.');
+    if (!ok) throw new ApiError(401, 'invalid_credentials', 'Incorrect password for this email.');
     const token = signAccessToken(user);
     res.json({ token, user: { id: user.id, email: user.email } });
   })
