@@ -30,6 +30,8 @@ const itemSchema = z.object({
   sodiumMg: z.number().min(0).optional(),
   source: z.enum(SOURCES),
   confidence: z.number().min(0).max(1).optional().nullable(),
+  isCustom: z.boolean().optional(),
+  customNutrition: z.boolean().optional(),
 });
 
 const mealSchema = z.object({
@@ -47,7 +49,7 @@ const mealSchema = z.object({
 async function resolveItems(items) {
   const resolved = [];
   for (const it of items) {
-    if (it.foodId) {
+    if (it.foodId && !it.isCustom && !it.customNutrition) {
       try {
         const macros = await nutritionProvider.computeMacros(it.foodId, it.qty, it.unit);
         if (macros) {
@@ -65,7 +67,10 @@ async function resolveItems(items) {
     for (const f of required) {
       if (it[f] == null) it[f] = 0;
     }
-    resolved.push(it);
+    const clean = { ...it };
+    delete clean.isCustom;
+    delete clean.customNutrition;
+    resolved.push(clean);
   }
   return resolved;
 }
