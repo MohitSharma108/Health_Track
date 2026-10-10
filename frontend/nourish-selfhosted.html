@@ -204,6 +204,8 @@ a{ color:inherit; }
 .nutri-table td{ padding:7px 0; border-bottom:1px solid var(--line); }
 .nutri-table td:last-child{ text-align:right; font-weight:700; }
 .nutri-table tr.sub td:first-child{ padding-left:14px; color:var(--ink-faint); font-weight:400; }
+.estimated-nutrition-card{ background:var(--card-tint); border:1px solid var(--line); border-radius:var(--radius-lg); padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.03); transition:all .15s ease; }
+.estimated-nutrition-card .chip{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius-pill); box-shadow:0 1px 2px rgba(0,0,0,0.04); font-weight:500; }
 
 /* Segmented control */
 .segmented{ display:flex; background:var(--card-tint); border-radius:var(--radius-pill); padding:3px; gap:2px; }
@@ -1576,6 +1578,28 @@ function sourceBadge(source){
   const label = {ai_image:"📷 AI photo", manual:"✏️ Manual", voice:"🎙️ Voice", ocr:"🏷️ Label scan", saved:"⭐ Saved meal", ai_suggestion:"✨ AI suggested"}[source]||source;
   return `<span class="badge badge-source">${label}</span>`;
 }
+function renderEstimatedNutritionCard(m, title = "Estimated nutrition"){
+  if(!m) m = {};
+  const cal = Math.round(m.cal != null ? m.cal : (m.calories != null ? m.calories : 0));
+  const p = round1(m.p != null ? m.p : (m.protein != null ? m.protein : 0));
+  const c = round1(m.c != null ? m.c : (m.carbs != null ? m.carbs : 0));
+  const fat = round1(m.fat != null ? m.fat : 0);
+  const fib = round1(m.fib != null ? m.fib : (m.fibre != null ? m.fibre : 0));
+
+  return `<div class="card tight estimated-nutrition-card" style="background:var(--card-tint);margin:10px 0 12px;border:1px solid var(--line);border-radius:var(--radius-lg)">
+    <div class="row" style="margin-bottom:8px">
+      <b style="font-size:14px;color:var(--ink)">${esc(title)}</b>
+      <b style="color:var(--coral);font-size:16px">${cal} kcal</b>
+    </div>
+    <div class="row" style="gap:6px;flex-wrap:wrap">
+      <span class="chip" style="font-size:12px;padding:4px 10px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius-pill);color:var(--ink);display:inline-flex;align-items:center;gap:4px">🥩 <b>${p}g</b> P</span>
+      <span class="chip" style="font-size:12px;padding:4px 10px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius-pill);color:var(--ink);display:inline-flex;align-items:center;gap:4px">🍚 <b>${c}g</b> C</span>
+      <span class="chip" style="font-size:12px;padding:4px 10px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius-pill);color:var(--ink);display:inline-flex;align-items:center;gap:4px">🥑 <b>${fat}g</b> F</span>
+      <span class="chip" style="font-size:12px;padding:4px 10px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--radius-pill);color:var(--ink);display:inline-flex;align-items:center;gap:4px">🥦 <b>${fib}g</b> Fib</span>
+    </div>
+  </div>`;
+}
+
 function macroChipsRow(m){
   // Normalize both frontend {cal,p,c,fat} and AI response {calories,protein,carbs,fat} formats
   const cal = m.cal != null ? m.cal : (m.calories != null ? m.calories : 0);
@@ -2542,15 +2566,7 @@ function sheetAddFoodContent(props){
         `).join("")}
       </div>
     </div>
-    <div class="card tight" style="background:var(--card-tint)">
-      <table class="nutri-table">
-        <tr><td>Calories</td><td>${Math.round(m.cal)} kcal</td></tr>
-        <tr><td>Protein</td><td>${round1(m.p)} g</td></tr>
-        <tr><td>Carbohydrates</td><td>${round1(m.c)} g</td></tr>
-        <tr><td>Fat</td><td>${round1(m.fat)} g</td></tr>
-        <tr><td>Fibre</td><td>${round1(m.fib)} g</td></tr>
-      </table>
-    </div>
+    ${renderEstimatedNutritionCard(m, "Estimated nutrition")}
     <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="confirmAddFood()">Add to meal</button>`;
 }
 function refreshSheet(){ render(); }
@@ -2595,12 +2611,22 @@ function sheetCustomFoodContent(props){
     <div class="field"><label>Food name</label><input type="text" value="${esc(props.name)}" oninput="STATE.sheet.props.name=this.value"></div>
     <div class="row" style="gap:10px"><div class="field" style="flex:1"><label>Serving size</label><input type="number" value="${props.qty}" oninput="STATE.sheet.props.qty=Number(this.value)||0"></div>
     <div class="field" style="flex:1"><label>Unit</label><select onchange="STATE.sheet.props.unit=this.value">${["g","ml","piece","serving"].map(u=>`<option ${props.unit===u?'selected':''}>${u}</option>`).join("")}</select></div></div>
-    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label>Calories</label><input type="number" value="${props.cal}" oninput="STATE.sheet.props.cal=Number(this.value)||0"></div>
-    <div class="field" style="flex:1"><label>Protein (g)</label><input type="number" value="${props.p}" oninput="STATE.sheet.props.p=Number(this.value)||0"></div></div>
-    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label>Carbs (g)</label><input type="number" value="${props.c}" oninput="STATE.sheet.props.c=Number(this.value)||0"></div>
-    <div class="field" style="flex:1"><label>Fat (g)</label><input type="number" value="${props.fat}" oninput="STATE.sheet.props.fat=Number(this.value)||0"></div></div>
-    <div class="field"><label>Fibre (g)</label><input type="number" value="${props.fib}" oninput="STATE.sheet.props.fib=Number(this.value)||0"></div>
+    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label>Calories</label><input type="number" value="${props.cal}" oninput="STATE.sheet.props.cal=Number(this.value)||0; updateCustomFoodLivePreview()"></div>
+    <div class="field" style="flex:1"><label>Protein (g)</label><input type="number" value="${props.p}" oninput="STATE.sheet.props.p=Number(this.value)||0; updateCustomFoodLivePreview()"></div></div>
+    <div class="row" style="gap:10px"><div class="field" style="flex:1"><label>Carbs (g)</label><input type="number" value="${props.c}" oninput="STATE.sheet.props.c=Number(this.value)||0; updateCustomFoodLivePreview()"></div>
+    <div class="field" style="flex:1"><label>Fat (g)</label><input type="number" value="${props.fat}" oninput="STATE.sheet.props.fat=Number(this.value)||0; updateCustomFoodLivePreview()"></div></div>
+    <div class="field"><label>Fibre (g)</label><input type="number" value="${props.fib}" oninput="STATE.sheet.props.fib=Number(this.value)||0; updateCustomFoodLivePreview()"></div>
+    <div id="customFoodLivePreview">
+      ${(props.cal || props.p || props.c || props.fat) ? renderEstimatedNutritionCard({cal:props.cal, p:props.p, c:props.c, fat:props.fat, fib:props.fib}, "Estimated nutrition") : ''}
+    </div>
     <button class="btn btn-primary btn-block" onclick="saveCustomFood()">Save food</button>`;
+}
+function updateCustomFoodLivePreview(){
+  const p = (STATE.sheet && STATE.sheet.props) || {};
+  const el = document.getElementById("customFoodLivePreview");
+  if(el){
+    el.innerHTML = renderEstimatedNutritionCard({cal:Number(p.cal)||0, p:Number(p.p)||0, c:Number(p.c)||0, fat:Number(p.fat)||0, fib:Number(p.fib)||0}, "Estimated nutrition");
+  }
 }
 async function saveCustomFood(){
   const p = STATE.sheet.props;
@@ -2708,7 +2734,7 @@ function sheetReviewDraftContent(){
       </button>
     </div>
 
-    ${macroChipsRow(t)}
+    ${renderEstimatedNutritionCard(t, "Estimated nutrition")}
     <div class="field" style="margin-top:10px">
       <label>Note (optional)</label>
       <textarea oninput="ensureDraft().note=this.value">${esc(d.note||"")}</textarea>
@@ -2860,18 +2886,7 @@ function sheetEditDraftItemContent(props){
     </div>
 
     <!-- Nutrition Preview Card -->
-    <div class="card tight" style="background:var(--card-tint);margin-bottom:14px">
-      <div class="row" style="margin-bottom:6px">
-        <b>Estimated nutrition</b>
-        <b style="color:var(--coral);font-size:15px">${Math.round(previewMacros.cal)} kcal</b>
-      </div>
-      <div class="row" style="gap:6px;flex-wrap:wrap">
-        <span class="chip" style="font-size:11.5px;padding:3px 8px">🥩 <b>${round1(previewMacros.p)}g</b> P</span>
-        <span class="chip" style="font-size:11.5px;padding:3px 8px">🍚 <b>${round1(previewMacros.c)}g</b> C</span>
-        <span class="chip" style="font-size:11.5px;padding:3px 8px">🥑 <b>${round1(previewMacros.fat)}g</b> F</span>
-        <span class="chip" style="font-size:11.5px;padding:3px 8px">🥦 <b>${round1(previewMacros.fib)}g</b> Fib</span>
-      </div>
-    </div>
+    ${renderEstimatedNutritionCard(previewMacros, "Estimated nutrition")}
 
     <!-- Actions -->
     <div class="stack" style="gap:8px">
@@ -3006,13 +3021,10 @@ function sheetMealDetailContent(props){
         ${it.confidence!=null?confBadge(it.confidence):""}
       </div>`).join("")}
     </div>
-    <div class="card tight" style="margin-top:10px;background:var(--card-tint)">
-      <table class="nutri-table">
-        <tr><td><b>Total calories</b></td><td><b>${Math.round(t.cal)} kcal</b></td></tr>
-        <tr><td>Protein</td><td>${round1(t.p)} g</td></tr>
-        <tr><td>Carbohydrates</td><td>${round1(t.c)} g</td></tr>
-        <tr><td>Fat</td><td>${round1(t.fat)} g</td></tr>
-        <tr><td>Fibre</td><td>${round1(t.fib)} g</td></tr>
+    ${renderEstimatedNutritionCard(t, "Estimated nutrition")}
+    <div class="card tight" style="margin-top:6px;background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-md)">
+      <div class="section-label" style="margin:2px 0 6px;font-size:12px">Detailed nutrients</div>
+      <table class="nutri-table" style="font-size:12.5px">
         <tr><td>Sugar</td><td>${round1(t.sug)} g</td></tr>
         <tr><td>Saturated fat</td><td>${round1(t.sat)} g</td></tr>
         <tr><td>Sodium</td><td>${Math.round(t.sod)} mg</td></tr>
@@ -4833,10 +4845,10 @@ function renderEatNow(){
   </div>`;
   if(e.status==="error") return `<div class="error-box">${esc(e.error)}</div><button class="btn btn-primary btn-block" style="margin-top:10px" onclick="fetchEatNow()">Try again</button>`;
   if(e.status==="results"){
-    return e.options.map((o,idx)=>`<div class="card tight" style="margin-bottom:10px">
+    return e.options.map((o,idx)=>`<div class="card tight" style="margin-bottom:12px;border:1px solid var(--line)">
       <div class="row"><b>${esc(o.name)}</b><span class="badge badge-ai">✨ AI suggested</span></div>
       <p class="small muted" style="margin:4px 0">${esc(o.description)}</p>
-      ${macroChipsRow({cal:o.calories,p:o.protein,c:o.carbs,fat:o.fat})}
+      ${renderEstimatedNutritionCard({cal:o.calories,p:o.protein,c:o.carbs,fat:o.fat,fib:o.fibre}, "Estimated nutrition")}
       <p class="small" style="margin:6px 0 8px"><b>Why it fits:</b> ${esc(o.whyItFits)}${o.estimatedCost?` · ~${esc(o.estimatedCost)}`:""}</p>
       <button class="btn btn-leaf btn-block btn-sm" onclick="addEatSuggestion(${idx})">+ Add this meal to today</button>
     </div>`).join("") + `<button class="link-btn" style="margin-top:6px" onclick="fetchEatNow()">↻ Get different options</button>`;
@@ -4873,9 +4885,9 @@ function renderEatPlan(){
         <div class="row"><b>${MEAL_ICON[m.mealType]||"🍽️"} ${esc(m.mealType)}</b><button class="link-btn" onclick="regenPlanMeal(${idx})">Regenerate</button></div>
         <div style="font-weight:700;font-size:14px;margin:4px 0 2px">${esc(m.name)}</div>
         <p class="small muted">${esc(m.description)}</p>
-        ${macroChipsRow({cal:m.calories,p:m.protein,c:m.carbs,fat:m.fat})}
+        ${renderEstimatedNutritionCard({cal:m.calories,p:m.protein,c:m.carbs,fat:m.fat,fib:m.fibre}, "Estimated nutrition")}
       </div>`).join("")}
-      <div class="card tight" style="background:var(--card-tint)"><b class="small">Day total</b> ${macroChipsRow(e.plan.dayTotals)}</div>
+      ${renderEstimatedNutritionCard(e.plan.dayTotals, "Day Total Estimated Nutrition")}
       <button class="btn btn-primary btn-block" style="margin-top:10px" onclick="addWholePlan()">Add this plan to tomorrow</button>`;
   }
   return `<p class="muted small">Generates breakfast, lunch, an evening snack and dinner that fit your daily targets and preferences.</p>
@@ -4937,7 +4949,7 @@ function sheetQuickAddContent(props){
     <p class="muted small" style="margin:-4px 0 14px">Log calories and macros directly without searching for an item name.</p>
     <div class="field">
       <label>Calories (kcal) *</label>
-      <input type="number" id="quick-cal-input" placeholder="e.g. 350" value="${props.cal||''}" oninput="STATE.sheet.props.cal=this.value" autofocus>
+      <input type="number" id="quick-cal-input" placeholder="e.g. 350" value="${props.cal||''}" oninput="STATE.sheet.props.cal=this.value; updateQuickAddLivePreview()" autofocus>
     </div>
     <div class="field">
       <label>Optional Description / Item Name</label>
@@ -4946,15 +4958,15 @@ function sheetQuickAddContent(props){
     <div class="row" style="gap:10px">
       <div class="field" style="flex:1">
         <label>Protein (g)</label>
-        <input type="number" placeholder="0" value="${props.protein||''}" oninput="STATE.sheet.props.protein=this.value">
+        <input type="number" placeholder="0" value="${props.protein||''}" oninput="STATE.sheet.props.protein=this.value; updateQuickAddLivePreview()">
       </div>
       <div class="field" style="flex:1">
         <label>Carbs (g)</label>
-        <input type="number" placeholder="0" value="${props.carbs||''}" oninput="STATE.sheet.props.carbs=this.value">
+        <input type="number" placeholder="0" value="${props.carbs||''}" oninput="STATE.sheet.props.carbs=this.value; updateQuickAddLivePreview()">
       </div>
       <div class="field" style="flex:1">
         <label>Fat (g)</label>
-        <input type="number" placeholder="0" value="${props.fat||''}" oninput="STATE.sheet.props.fat=this.value">
+        <input type="number" placeholder="0" value="${props.fat||''}" oninput="STATE.sheet.props.fat=this.value; updateQuickAddLivePreview()">
       </div>
     </div>
     <div class="field">
@@ -4963,7 +4975,21 @@ function sheetQuickAddContent(props){
         ${MEAL_TYPES.map(mt=>`<span class="chip ${props.mealType===mt?'active':''}" onclick="STATE.sheet.props.mealType='${mt}'; refreshSheet()">${MEAL_ICON[mt]} ${mt}</span>`).join("")}
       </div>
     </div>
+    <div id="quickAddLivePreview">
+      ${(props.cal || props.protein || props.carbs || props.fat) ? renderEstimatedNutritionCard({cal:props.cal||0, p:props.protein||0, c:props.carbs||0, fat:props.fat||0, fib:0}, "Estimated nutrition") : ''}
+    </div>
     <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="saveQuickAddMeal()">Log ${props.cal?props.cal+' kcal':'Calories'}</button>`;
+}
+function updateQuickAddLivePreview(){
+  const p = (STATE.sheet && STATE.sheet.props) || {};
+  const el = document.getElementById("quickAddLivePreview");
+  if(el){
+    if(p.cal || p.protein || p.carbs || p.fat){
+      el.innerHTML = renderEstimatedNutritionCard({cal:Number(p.cal)||0, p:Number(p.protein)||0, c:Number(p.carbs)||0, fat:Number(p.fat)||0, fib:0}, "Estimated nutrition");
+    } else {
+      el.innerHTML = "";
+    }
+  }
 }
 
 async function saveQuickAddMeal(){
