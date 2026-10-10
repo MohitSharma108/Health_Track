@@ -2927,12 +2927,8 @@ function confirmAddFood(){
     isCustom: isCustom,
     customNutrition: isCustom
   });
-  if(draft.items.length===1){
-    openReviewDraftSheet();
-  } else {
-    closeSheet();
-    toast(`${f.name} added — tap "Review & save" below when you're done adding items`);
-  }
+  openReviewDraftSheet();
+  toast(`${f.name} added to meal`);
 }
 function openCustomFoodSheet(){ openSheet("customFood", {name:"",qty:100,unit:"g",cal:0,p:0,c:0,fat:0,fib:0}); }
 function sheetCustomFoodContent(props){
@@ -3055,12 +3051,15 @@ function sheetReviewDraftContent(){
     </div>
 
     <!-- Quick Actions to Add More Foods to This Meal -->
-    <div class="row" style="gap:8px;margin-bottom:12px">
-      <button type="button" class="btn btn-outline btn-sm" style="flex:1;background:var(--card);font-weight:700" onclick="closeSheet(); goTo('log')">
-        ➕ Add another food
+    <div class="row" style="gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button type="button" class="btn btn-outline btn-sm" style="flex:1;min-width:135px;background:var(--card);font-weight:700" onclick="openAddDraftCustomItemSheet()">
+        ➕ Add ingredient
+      </button>
+      <button type="button" class="btn btn-outline btn-sm" style="flex:1;min-width:135px;background:var(--card);font-weight:700" onclick="closeSheet(); goTo('log')">
+        🔍 Search food
       </button>
       <button type="button" class="btn btn-outline btn-sm" style="background:var(--card);font-weight:700" onclick="openQuickAddSheet(d.mealType)">
-        ⚡ Quick calories
+        ⚡ Quick cal
       </button>
     </div>
 
@@ -3374,6 +3373,155 @@ function removeDraftItem(idx){
   const d = ensureDraft();
   if(d.items) d.items.splice(idx,1);
   if(!d.items || !d.items.length) closeSheet(); else openReviewDraftSheet();
+}
+
+function openAddDraftCustomItemSheet(){
+  openSheet("addDraftCustomItem", {
+    name: "",
+    qty: 100,
+    unit: "g",
+    cal: 0,
+    p: 0,
+    c: 0,
+    fat: 0,
+    fib: 0,
+    sug: 0,
+    sat: 0,
+    sod: 0
+  });
+}
+
+function sheetAddDraftCustomItemContent(props){
+  const p = props;
+  const cal = Number(p.cal)||0;
+  const prot = Number(p.p)||0;
+  const carb = Number(p.c)||0;
+  const fat = Number(p.fat)||0;
+  const fib = Number(p.fib)||0;
+  const sug = Number(p.sug)||0;
+  const sat = Number(p.sat)||0;
+  const sod = Number(p.sod)||0;
+
+  return `<div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h3>➕ Add Ingredient / Custom Item</h3>
+      <button class="icon-btn" onclick="openReviewDraftSheet()">${ICO.close}</button>
+    </div>
+    <p class="muted small" style="margin:-4px 0 12px">Add any ingredient with exact quantity, macros, and micros to this meal.</p>
+
+    <div class="field">
+      <label>Ingredient / Food Name *</label>
+      <input type="text" placeholder="e.g. Basmati Rice, Paneer, Cooking Oil & Masala" value="${esc(p.name||'')}" oninput="STATE.sheet.props.name=this.value" autofocus>
+    </div>
+
+    <div class="row" style="gap:10px">
+      <div class="field" style="flex:1">
+        <label>Quantity</label>
+        <input type="number" step="1" min="0.1" value="${p.qty}" oninput="STATE.sheet.props.qty=Math.max(0.1, Number(this.value)||0); refreshSheet()">
+      </div>
+      <div class="field" style="flex:1">
+        <label>Unit</label>
+        <select onchange="STATE.sheet.props.unit=this.value; refreshSheet()">
+          ${["g","ml","piece","tbsp","tsp","cup","bowl","serving"].map(u=>`<option value="${u}" ${p.unit===u?'selected':''}>${u}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <!-- Quick gram chips -->
+    <div class="chip-row" style="margin:2px 0 12px">
+      ${[10, 20, 30, 40, 50, 100, 150, 200].map(g=>`<span class="chip" onclick="STATE.sheet.props.qty=${g}; STATE.sheet.props.unit='g'; refreshSheet()">${g}g</span>`).join("")}
+    </div>
+
+    <div style="margin:8px 0 12px;padding:12px;background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-lg)">
+      <div class="row" style="margin-bottom:8px">
+        <span style="font-weight:700;font-size:13px;color:var(--ink)">Nutrition Data (Macros & Calories)</span>
+        <span class="muted small">For this portion</span>
+      </div>
+      <div class="row" style="gap:8px;margin-bottom:8px">
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Calories (kcal) *</label>
+          <input type="number" value="${cal}" style="font-weight:700;color:var(--coral)" oninput="STATE.sheet.props.cal=Number(this.value)||0; refreshSheet()">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Protein (g)</label>
+          <input type="number" step="0.1" value="${prot}" style="font-weight:700" oninput="STATE.sheet.props.p=Number(this.value)||0; refreshSheet()">
+        </div>
+      </div>
+      <div class="row" style="gap:8px;margin-bottom:8px">
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Carbs (g)</label>
+          <input type="number" step="0.1" value="${carb}" style="font-weight:700" oninput="STATE.sheet.props.c=Number(this.value)||0; refreshSheet()">
+        </div>
+        <div class="field" style="flex:1;margin-bottom:0">
+          <label style="font-size:11.5px">Fat (g)</label>
+          <input type="number" step="0.1" value="${fat}" style="font-weight:700" oninput="STATE.sheet.props.fat=Number(this.value)||0; refreshSheet()">
+        </div>
+      </div>
+
+      <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
+        <div class="muted small" style="font-weight:700;margin-bottom:6px;font-size:11px">Micronutrients:</div>
+        <div class="row" style="gap:6px">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🌾 Fibre (g)</label>
+            <input type="number" step="0.1" value="${fib}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.fib=Number(this.value)||0; refreshSheet()">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🍬 Sugar (g)</label>
+            <input type="number" step="0.1" value="${sug}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.sug=Number(this.value)||0; refreshSheet()">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🧈 Sat Fat (g)</label>
+            <input type="number" step="0.1" value="${sat}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.sat=Number(this.value)||0; refreshSheet()">
+          </div>
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label style="font-size:10px">🧂 Sodium (mg)</label>
+            <input type="number" value="${sod}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.sod=Number(this.value)||0; refreshSheet()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${renderEstimatedNutritionCard({cal, p:prot, c:carb, fat, fib}, "Portion nutrition preview")}
+
+    <div class="stack" style="gap:8px;margin-top:12px">
+      <button class="btn btn-primary btn-block" onclick="saveAddDraftCustomItem()">
+        ➕ Add to meal (${cal} kcal · ${prot}g P)
+      </button>
+      <button class="btn btn-ghost btn-block" onclick="openReviewDraftSheet()">
+        Cancel
+      </button>
+    </div>`;
+}
+
+function saveAddDraftCustomItem(){
+  const p = STATE.sheet.props;
+  if(!p.name || !p.name.trim()){
+    toast("Please enter an ingredient or food name");
+    return;
+  }
+  const draft = ensureDraft();
+  draft.items = draft.items || [];
+  draft.items.push({
+    id: uid(),
+    name: p.name.trim(),
+    qty: Number(p.qty) || 1,
+    unit: p.unit || "g",
+    macros: {
+      cal: Math.round(Number(p.cal)||0),
+      p: round1(Number(p.p)||0),
+      c: round1(Number(p.c)||0),
+      fat: round1(Number(p.fat)||0),
+      fib: round1(Number(p.fib)||0),
+      sug: round1(Number(p.sug)||0),
+      sat: round1(Number(p.sat)||0),
+      sod: Math.round(Number(p.sod)||0)
+    },
+    source: "manual",
+    isCustom: true,
+    customNutrition: true
+  });
+  toast(`Added ${p.name.trim()} to meal`);
+  openReviewDraftSheet();
 }
 async function saveDraftMeal(source){
   const d = ensureDraft();
@@ -6632,7 +6780,7 @@ function renderSheetContent(){
   const sh = STATE.sheet; if(!sh) return "";
   const fns = {
     addFood: sheetAddFoodContent, customFood: sheetCustomFoodContent, reviewDraft: sheetReviewDraftContent,
-    editDraftItem: sheetEditDraftItemContent,
+    editDraftItem: sheetEditDraftItemContent, addDraftCustomItem: sheetAddDraftCustomItemContent,
     mealDetail: sheetMealDetailContent, editQuickMeal: sheetEditQuickMealContent, voiceLog: sheetVoiceLogContent, labelScan: sheetLabelScanContent,
     savedMeals: sheetSavedMealsContent, addIngredient: sheetAddIngredientContent, ingredientQty: sheetIngredientQtyContent,
     addMissingItem: sheetAddMissingItemContent, editScanItem: sheetEditScanItemContent, whatToEat: sheetWhatToEatContent,
