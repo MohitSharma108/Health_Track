@@ -102,6 +102,16 @@ const user = {
       });
     }
 
+    db.nutritionGoals.push({
+      userId: id,
+      calories: (data.goals && data.goals.create && data.goals.create.calories) || 2000,
+      proteinG: (data.goals && data.goals.create && data.goals.create.proteinG) || 120,
+      carbsG: (data.goals && data.goals.create && data.goals.create.carbsG) || 220,
+      fatG: (data.goals && data.goals.create && data.goals.create.fatG) || 65,
+      fibreG: (data.goals && data.goals.create && data.goals.create.fibreG) || 30,
+      updatedAt: new Date().toISOString(),
+    });
+
     if (data.notifPrefs && data.notifPrefs.create && Array.isArray(data.notifPrefs.create)) {
       for (const pref of data.notifPrefs.create) {
         db.notificationPreferences.push({
@@ -340,7 +350,21 @@ const mealItem = {
 const weightLog = {
   async findMany({ where = {}, orderBy = [] }) {
     const db = loadDb();
-    let list = db.weightLogs.filter(w => !where.userId || w.userId === where.userId);
+    let list = db.weightLogs.filter(w => {
+      if (where.userId && w.userId !== where.userId) return false;
+      if (where.date) {
+        if (where.date.gte || where.date.lte) {
+          const gteStr = where.date.gte ? (where.date.gte instanceof Date ? where.date.gte.toISOString().slice(0, 10) : String(where.date.gte).slice(0, 10)) : null;
+          const lteStr = where.date.lte ? (where.date.lte instanceof Date ? where.date.lte.toISOString().slice(0, 10) : String(where.date.lte).slice(0, 10)) : null;
+          if (gteStr && w.date < gteStr) return false;
+          if (lteStr && w.date > lteStr) return false;
+        } else {
+          const dStr = where.date instanceof Date ? where.date.toISOString().slice(0, 10) : String(where.date).slice(0, 10);
+          if (w.date !== dStr) return false;
+        }
+      }
+      return true;
+    });
     list = list.map(w => ({ ...w, date: new Date(w.date + 'T00:00:00Z') }));
     list.sort((a, b) => a.date - b.date);
     return list;
@@ -372,11 +396,30 @@ const weightLog = {
 
 // WaterLog Model
 const waterLog = {
-  async findFirst({ where = {} }) {
+  async findMany({ where = {} }) {
     const db = loadDb();
-    const dateStr = where.date instanceof Date ? where.date.toISOString().slice(0, 10) : String(where.date || '').slice(0, 10);
-    const item = db.waterLogs.find(w => w.userId === where.userId && w.date === dateStr);
-    return item ? { ...item, date: new Date(item.date + 'T00:00:00Z') } : null;
+    const dateStr = where.date instanceof Date ? where.date.toISOString().slice(0, 10) : (where.date ? String(where.date).slice(0, 10) : null);
+    return db.waterLogs
+      .filter(w => (!where.userId || w.userId === where.userId) && (!dateStr || w.date === dateStr))
+      .map(w => ({ ...w, date: new Date(w.date + 'T00:00:00Z') }));
+  },
+  async findFirst({ where = {} }) {
+    const list = await this.findMany({ where });
+    return list[0] || null;
+  },
+  async create({ data }) {
+    const db = loadDb();
+    const dateStr = data.date instanceof Date ? data.date.toISOString().slice(0, 10) : String(data.date).slice(0, 10);
+    const item = {
+      id: uuid(),
+      userId: data.userId,
+      date: dateStr,
+      amountMl: Number(data.amountMl) || 0,
+      createdAt: new Date().toISOString(),
+    };
+    db.waterLogs.push(item);
+    saveDb(db);
+    return { ...item, date: new Date(item.date + 'T00:00:00Z') };
   },
   async upsert({ where, update, create }) {
     const db = loadDb();
@@ -397,9 +440,6 @@ const waterLog = {
     }
     saveDb(db);
     return { ...item, date: new Date(item.date + 'T00:00:00Z') };
-  },
-  async create({ data }) {
-    return this.upsert({ where: { userId_date: { userId: data.userId, date: data.date } }, update: data, create: data });
   },
 };
 

@@ -32,6 +32,15 @@ router.post(
         email,
         passwordHash,
         profile: { create: { name } },
+        goals: {
+          create: {
+            calories: 2000,
+            proteinG: 120,
+            carbsG: 220,
+            fatG: 65,
+            fibreG: 30,
+          },
+        },
         notifPrefs: {
           create: [
             { type: 'mealReminders', enabled: true },

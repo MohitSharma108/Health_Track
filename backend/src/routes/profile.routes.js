@@ -13,11 +13,44 @@ router.use(requireAuth);
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const [profile, goals] = await Promise.all([
+    let [profile, goals] = await Promise.all([
       prisma.profile.findUnique({ where: { userId: req.userId } }),
       prisma.nutritionGoal.findUnique({ where: { userId: req.userId } }),
     ]);
-    if (!profile) throw new ApiError(404, 'profile_not_found', 'Complete onboarding first.');
+    if (!profile) {
+      profile = await prisma.profile.upsert({
+        where: { userId: req.userId },
+        update: {},
+        create: {
+          userId: req.userId,
+          name: 'You',
+          activityLevel: 'light',
+          goal: 'maintain',
+          diet: 'Non-vegetarian',
+          allergies: [],
+          mealsPerDay: 4,
+          units: 'metric',
+          reportTime: '20:00',
+          appearance: 'system',
+          aiEnabled: true,
+          waterGoalMl: 2000,
+        },
+      });
+    }
+    if (!goals) {
+      goals = await prisma.nutritionGoal.upsert({
+        where: { userId: req.userId },
+        update: {},
+        create: {
+          userId: req.userId,
+          calories: 2000,
+          proteinG: 120,
+          carbsG: 220,
+          fatG: 65,
+          fibreG: 30,
+        },
+      });
+    }
     res.json({ profile, goals });
   })
 );

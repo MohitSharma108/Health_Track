@@ -32,7 +32,7 @@ function callGroq({ messages, model, maxTokens = 1500, temperature = 0.2 }) {
       temperature,
     };
     // For OpenAI OSS reasoning models on Groq, prevent reasoning token exhaustion
-    if (model && (model.includes('oss') || model.includes('120b') || model.includes('20b'))) {
+    if (model && (model.includes('oss') || model.includes('120b') || model.includes('20b')) && !model.includes('qwen') && !model.includes('vision')) {
       payloadObj.reasoning_effort = 'low';
     }
     const payload = JSON.stringify(payloadObj);
@@ -153,6 +153,14 @@ function parseJsonLoose(text) {
   const lastBracket = text.lastIndexOf(']');
   const last = Math.max(lastBrace, lastBracket);
   if (first !== -1 && last > first) attempts.push(text.slice(first, last + 1));
+  // Handle double-encoded JSON: model returns a JSON string whose value is the actual JSON
+  const trimmed = text.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    try {
+      const inner = JSON.parse(trimmed);
+      if (typeof inner === 'string') attempts.push(inner);
+    } catch (_) {}
+  }
   for (const candidate of attempts) {
     try {
       return JSON.parse(candidate.trim());

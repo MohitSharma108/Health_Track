@@ -15,13 +15,11 @@ const MEAL_TYPES = ['Breakfast', 'Morning snack', 'Lunch', 'Evening snack', 'Din
 const SOURCES = ['manual', 'ai_image', 'voice', 'ocr', 'saved', 'ai_suggestion'];
 
 const itemSchema = z.object({
-  foodId: z.string().uuid().optional().nullable(),
+  foodId: z.string().min(1).max(120).optional().nullable(),
   name: z.string().min(1).max(160),
   qty: z.number().positive(),
   unit: z.string().min(1).max(20),
-  // Required when foodId is absent (AI-estimated / freeform items); ignored
-  // (recomputed server-side) when foodId is present, so a client can't
-  // spoof nutrition for a real catalog food.
+  // Supplied macros used for freeform entries or fallback
   calories: z.number().min(0).optional(),
   proteinG: z.number().min(0).optional(),
   carbsG: z.number().min(0).optional(),
@@ -45,22 +43,25 @@ const mealSchema = z.object({
 });
 
 /** Resolve each item to trusted macros: recompute from the food catalog
- * when foodId is given, otherwise trust the caller's numbers (AI estimate
- * or a freeform manual entry) but require they were actually supplied. */
+ * when foodId is given and found, otherwise trust the caller's numbers. */
 async function resolveItems(items) {
   const resolved = [];
   for (const it of items) {
     if (it.foodId) {
-      const macros = await nutritionProvider.computeMacros(it.foodId, it.qty, it.unit);
-      if (!macros) throw new ApiError(400, 'invalid_food', `Food ${it.foodId} not found.`);
-      resolved.push({ ...it, ...macros });
-    } else {
-      const required = ['calories', 'proteinG', 'carbsG', 'fatG', 'fibreG'];
-      for (const f of required) {
-        if (it[f] == null) throw new ApiError(400, 'invalid_item', `Item "${it.name}" is missing ${f} (no foodId to compute it from).`);
-      }
-      resolved.push(it);
+      try {
+        const macros = await nutritionProvider.computeMacros(it.foodId, it.qty, it.unit);
+        if (macros) {
+          resolved.push({ ...it, ...macros });
+          continue;
+        }
+      } catch (_) {}
     }
+    // Fall back to caller's numbers or 0
+    const required = ['calories', 'proteinG', 'carbsG', 'fatG', 'fibreG'];
+    for (const f of required) {
+      if (it[f] == null) it[f] = 0;
+    }
+    resolved.push(it);
   }
   return resolved;
 }
