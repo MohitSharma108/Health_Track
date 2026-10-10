@@ -36,13 +36,23 @@ function createApp() {
 
   // Serve Frontend directly so frontend + backend run as one unified service
   const path = require('path');
-  const frontendDir = path.join(__dirname, '../../frontend');
+  const fs = require('fs');
+  const candidates = [
+    path.join(__dirname, '../../frontend'),
+    path.join(__dirname, '../public'),
+    path.join(__dirname, '../../backend/public'),
+  ];
+  const frontendDir = candidates.find((d) => fs.existsSync(d) && (fs.existsSync(path.join(d, 'nourish-selfhosted.html')) || fs.existsSync(path.join(d, 'index.html')))) || path.join(__dirname, '../public');
+
   app.use(express.static(frontendDir));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/health') || req.path.startsWith('/uploads')) {
       return next();
     }
-    res.sendFile(path.join(frontendDir, 'nourish-selfhosted.html'));
+    const htmlFile = fs.existsSync(path.join(frontendDir, 'nourish-selfhosted.html'))
+      ? path.join(frontendDir, 'nourish-selfhosted.html')
+      : path.join(frontendDir, 'index.html');
+    res.sendFile(htmlFile);
   });
 
   app.use(notFoundHandler);
