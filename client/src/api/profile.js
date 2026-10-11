@@ -13,6 +13,6 @@ export function useUpdateProfile() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data) => api.put('/profile', data),
-    onSuccess: () => qc.invalidateQueries(['profile']),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),
   })
 }

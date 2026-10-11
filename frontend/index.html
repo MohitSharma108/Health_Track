@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -77,7 +77,7 @@ body{
   -webkit-font-smoothing:antialiased; overscroll-behavior-y:none;
 }
 @media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
-button, input, select, textarea{ font-family:inherit; color:inherit; }
+button, input, select, textarea{ font-family:inherit; color:inherit; font-size:16px; -webkit-tap-highlight-color:transparent; }
 a{ color:inherit; }
 ::-webkit-scrollbar{ width:8px; height:8px; }
 ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:8px; }
@@ -95,7 +95,12 @@ a{ color:inherit; }
 .icon-btn svg{ width:18px !important; height:18px !important; flex:0 0 18px !important; }
 .dot-badge{ position:absolute; top:6px; right:6px; width:8px; height:8px; border-radius:50%; background:var(--coral); border:1.5px solid var(--card); }
 
-/* Universal SVG Icon Constraints */
+/* Universal SVG Icon Constraints: ensure no icon SVG ever expands beyond 24px */
+svg:not(.nutri-chart):not(.nutri-line):not(.nutri-ring):not(.nutri-donut) {
+  max-width: 24px !important;
+  max-height: 24px !important;
+  flex-shrink: 0 !important;
+}
 svg.ico, .ico {
   width: 20px !important;
   height: 20px !important;
@@ -157,7 +162,7 @@ svg.ico, .ico {
 .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
 .field label{ font-size:12.5px; font-weight:600; color:var(--ink-soft); }
 .field input, .field select, .field textarea{
-  border:1.5px solid var(--line); background:var(--paper); border-radius:var(--radius-md); padding:12px 14px; font-size:15px; color:var(--ink); width:100%; transition:border-color .15s ease, box-shadow .15s ease;
+  border:1.5px solid var(--line); background:var(--paper); border-radius:var(--radius-md); padding:11px 14px; font-size:16px; color:var(--ink); width:100%; box-sizing:border-box; transition:border-color .15s ease, box-shadow .15s ease;
 }
 .field textarea{ resize:vertical; min-height:64px; font-family:inherit; }
 .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--coral); box-shadow:0 0 0 3px rgba(229,87,63,0.14); }
@@ -1394,8 +1399,21 @@ function beFoodToFe(f){
 const LOCAL_FALLBACK_KEY = "nourish_fallback_store_v1";
 const LocalFallback = { store: {} };
 function loadLocalFallback(){
-  try{ const raw = localStorage.getItem(LOCAL_FALLBACK_KEY); if(raw) LocalFallback.store = JSON.parse(raw)||{}; }
-  catch(e){ console.warn("localStorage read failed", e); }
+  try{
+    const raw = localStorage.getItem(LOCAL_FALLBACK_KEY);
+    if(raw) LocalFallback.store = JSON.parse(raw)||{};
+    // Heal any stored item that lacks an id property
+    Object.keys(LocalFallback.store).forEach(k => {
+      const it = LocalFallback.store[k];
+      if(it && typeof it === 'object'){
+        const slashIdx = k.indexOf('/');
+        if(slashIdx !== -1){
+          const keyId = k.slice(slashIdx + 1);
+          if(!it.id) it.id = keyId;
+        }
+      }
+    });
+  } catch(e){ console.warn("localStorage read failed", e); }
 }
 function saveLocalFallback(){
   try{ localStorage.setItem(LOCAL_FALLBACK_KEY, JSON.stringify(LocalFallback.store)); }
@@ -1470,13 +1488,25 @@ const StorageService = {
     return Object.keys(LocalFallback.store).filter(k=>k.startsWith(path+"/")).map(k=>LocalFallback.store[k]);
   },
   async addToCollection(path, data){
-    const id = data.id || uid();
-    const item = Object.assign({id}, data);
+    const id = (data && data.id) || uid();
+    if(data) data.id = id;
+    const item = Object.assign({}, data, {id});
     LocalFallback.store[path+"/"+id] = item;
     saveLocalFallback();
     if(!getAuthToken()) return id;
     try{
-      if(path==="meals"){ const {meal} = await apiPost("/meals", feMealToBeBody(data)); return meal.id; }
+      if(path==="meals"){
+        const {meal} = await apiPost("/meals", feMealToBeBody(data));
+        if(meal && meal.id && meal.id !== id){
+          delete LocalFallback.store[path+"/"+id];
+          item.id = meal.id;
+          data.id = meal.id;
+          LocalFallback.store[path+"/"+meal.id] = item;
+          saveLocalFallback();
+          return meal.id;
+        }
+        return meal ? meal.id : id;
+      }
       if(path==="weight_logs"){ const {log} = await apiPost("/weight", {date:data.date, weightKg:data.weight, note:data.note}); return log.id; }
       if(path==="recipes"){
         const ingredients = (data.ingredients||[]).map(i=>({foodId:i.foodId, qty:i.qty, unit:i.unit}));
@@ -1494,16 +1524,29 @@ const StorageService = {
     return id;
   },
   async setInCollection(path, id, data){
-    LocalFallback.store[path+"/"+id] = Object.assign({id}, data);
+    const cleanId = id || (data && data.id) || uid();
+    if(data) data.id = cleanId;
+    LocalFallback.store[path+"/"+cleanId] = Object.assign({}, data, {id: cleanId});
     saveLocalFallback();
     if(!getAuthToken()) return;
     try{
-      if(path==="meals"){ await apiPut(`/meals/${id}`, feMealToBeBody(data)); return; }
+      if(path==="meals"){ await apiPut(`/meals/${cleanId}`, feMealToBeBody(data)); return; }
       if(path==="weight_logs"){ await apiPost("/weight", {date:data.date, weightKg:data.weight, note:data.note}); return; }
     }catch(e){ console.warn(e); }
   },
   async deleteFromCollection(path, id){
+    if(!id) return;
     delete LocalFallback.store[path+"/"+id];
+    // Also remove by id match across all keys in this path
+    Object.keys(LocalFallback.store).forEach(k => {
+      if(k.startsWith(path + "/")){
+        const val = LocalFallback.store[k];
+        const keyId = k.replace(path + "/", "");
+        if(keyId === String(id) || (val && String(val.id) === String(id))){
+          delete LocalFallback.store[k];
+        }
+      }
+    });
     saveLocalFallback();
     if(!getAuthToken()) return;
     try{
@@ -1582,16 +1625,127 @@ const RecommendationService = {
   async regenerateMeal(ctx, mealType){ return callAiJson("/ai/regenerate-meal", Object.assign({}, ctx || {}, {mealType, avoid: ctx && ctx.avoid})); }
 };
 
+/* Intelligent local daily analysis generator (offline/guest/resilient fallback) */
+function generateSmartDailyAnalysis(ctx){
+  const t = ctx.targets || { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 28 };
+  const c = ctx.consumed || { calories: 0, protein: 0, carbs: 0, fat: 0, fibre: 0 };
+  const meals = ctx.mealsLogged || [];
+  
+  const calDelta = Math.round((c.calories || 0) - (t.calories || 2000));
+  const pDelta = round1((c.protein || 0) - (t.protein || 120));
+  const cDelta = round1((c.carbs || 0) - (t.carbs || 220));
+  const fatDelta = round1((c.fat || 0) - (t.fat || 65));
+  const fibDelta = round1((c.fibre || 0) - (t.fibre || 28));
+
+  const pRatio = Math.max(0, Math.min(1.2, (c.protein || 0) / Math.max(1, t.protein || 120)));
+  const calRatio = Math.max(0, 1 - Math.min(1, Math.abs(calDelta) / Math.max(1, t.calories || 2000)));
+  const fibRatio = Math.max(0, Math.min(1.2, (c.fibre || 0) / Math.max(1, t.fibre || 28)));
+  const mealCountScore = Math.min(1, meals.length / 3);
+
+  const score = Math.min(10, Math.max(4.8, round1((pRatio * 4.2 + calRatio * 3.2 + fibRatio * 1.6 + mealCountScore * 1.0))));
+
+  let verdict = "Balanced Nutrition Day";
+  if(pDelta >= 0 && Math.abs(calDelta) <= 150) verdict = "Optimal Fueling · Target Protein & Energy Hit";
+  else if(pDelta < -25 && Math.abs(calDelta) <= 200) verdict = "Clean Calorie Window · Protein Needs A Boost";
+  else if(calDelta > 300) verdict = "Calorie Surplus · Focus on Fiber & Lean Pacing";
+  else if(fibDelta < -10) verdict = "Protein on Track · Daily Fiber Needs Attention";
+
+  const summary = `You reached ${Math.round(pRatio * 100)}% of your protein goal with a ${Math.abs(calDelta)} kcal ${calDelta >= 0 ? "surplus" : "deficit"} across ${meals.length} logged meal${meals.length > 1 ? "s" : ""}.`;
+
+  const strengths = [];
+  if(pRatio >= 0.85) strengths.push(`Strong protein foundation: ${round1(c.protein)}g consumed towards your ${t.protein}g target.`);
+  else strengths.push(`Logged ${meals.length} meal${meals.length > 1 ? 's' : ''} on time, maintaining logging discipline.`);
+  if(Math.abs(calDelta) <= 250) strengths.push(`Steady caloric control: within ${Math.abs(calDelta)} kcal of daily energy expenditure.`);
+  else if(fatDelta <= 5) strengths.push(`Kept dietary fats strictly within healthy hormonal boundaries (${round1(c.fat)}g).`);
+
+  const gaps = [];
+  if(pDelta < -15) gaps.push(`Protein shortfall of ${Math.abs(pDelta)}g below target — can limit optimal lean muscle repair.`);
+  if(fibDelta < -8) gaps.push(`Fiber gap of ${Math.abs(fibDelta)}g below optimal 28g threshold, affecting digestion and fullness.`);
+  if(calDelta > 350) gaps.push(`Surpassed daily calorie budget by ${calDelta} kcal — prioritize hydrating, low-density foods.`);
+
+  let pacing = "Spreading protein evenly across breakfast, lunch, and dinner improves muscle protein synthesis and stops late-night cravings.";
+  if(meals.length === 1) pacing = "Only 1 meal logged today. Breaking protein intake into 2-3 paced meals prevents glucose spikes and stabilizes morning-to-night satiety.";
+  else if(meals.length >= 3) pacing = "Good meal pacing across 3+ meals. Ensure your breakfast anchors at least 20g protein to prevent afternoon energy slumps.";
+
+  const actionableSwaps = [];
+  if(pDelta < -15){
+    actionableSwaps.push({
+      food: "150g Low-fat Curd (Dahi) or Greek Yogurt",
+      when: "Add to Lunch or Snack",
+      benefit: "+12g protein with zero cook time",
+      impact: `Closes ${Math.min(100, Math.round((12 / Math.max(1, -pDelta)) * 100))}% of today's protein deficit`
+    });
+    actionableSwaps.push({
+      food: "40g Paneer or Soya Chunks Bhurji",
+      when: "Dinner or Breakfast swap",
+      benefit: "+9g protein, rich in calcium & leucine",
+      impact: "Accelerates overnight muscle recovery"
+    });
+  }
+  if(fibDelta < -6){
+    actionableSwaps.push({
+      food: "1 bowl Sprouted Moong, Cucumber & Carrot salad",
+      when: "Before Lunch",
+      benefit: "+6.5g fiber, live enzymes & potassium",
+      impact: "Doubles daily micronutrient density"
+    });
+  }
+  if(actionableSwaps.length < 2){
+    actionableSwaps.push({
+      food: "15g Chia Seeds or Roasted Flaxseeds",
+      when: "In morning water or dahi",
+      benefit: "+5g fiber, rich in plant Omega-3s",
+      impact: "Supports heart health & steady digestion"
+    });
+  }
+
+  const tomorrowTactics = [
+    `Anchor your first meal of the day with at least 20g protein (${t.protein >= 120 ? 'eggs, paneer, or sprouted moong' : 'greek yogurt or lentils'}).`,
+    `Eat 1 bowl of raw salad or greens before your primary carbohydrate meal to slow glucose absorption.`,
+    `Hydrate with 500ml water upon waking to kickstart cellular metabolism.`
+  ];
+
+  return {
+    score,
+    verdict,
+    summary,
+    strengths,
+    gaps,
+    macroAnalysis: {
+      calories: { consumed: c.calories, target: t.calories, delta: calDelta, status: Math.abs(calDelta) <= 150 ? "optimal" : calDelta > 0 ? "surplus" : "deficit", note: `${Math.abs(calDelta)} kcal ${calDelta >= 0 ? 'surplus' : 'deficit'}` },
+      protein: { consumed: c.protein, target: t.protein, delta: pDelta, status: pDelta >= 0 ? "optimal" : pDelta >= -15 ? "near" : "low", note: `${pDelta >= 0 ? '+' : ''}${pDelta}g vs goal` },
+      carbs: { consumed: c.carbs, target: t.carbs, delta: cDelta, status: "on_track", note: `${cDelta >= 0 ? '+' : ''}${cDelta}g vs goal` },
+      fat: { consumed: c.fat, target: t.fat, delta: fatDelta, status: fatDelta <= 5 ? "optimal" : "high", note: `${fatDelta >= 0 ? '+' : ''}${fatDelta}g vs goal` },
+      fiber: { consumed: c.fibre || 0, target: t.fibre || 28, delta: fibDelta, status: fibDelta >= 0 ? "optimal" : "low", note: `${fibDelta >= 0 ? '+' : ''}${fibDelta}g vs goal` }
+    },
+    mealPacingInsight: pacing,
+    actionableSwaps,
+    tomorrowTactics,
+    observations: [...strengths, ...gaps],
+    encouragement: `Great effort tracking ${meals.length} meal${meals.length>1?'s':''} today! Consistency builds long-term metabolic health.`,
+    recommendations: tomorrowTactics
+  };
+}
+
 /* ---- Daily AI analysis & smart insights ---- */
 const AnalysisService = {
   async dailyAnalysis(ctx){
-    return callAiJson("/ai/daily-analysis", {
-      date: ctx.date,
-      consumed: ctx.consumed,
-      mealsLogged: ctx.mealsLogged,
-      targets: ctx.targets,
-      goal: ctx.goal
-    });
+    try{
+      const res = await callAiJson("/ai/daily-analysis", {
+        date: ctx.date,
+        consumed: ctx.consumed,
+        mealsLogged: ctx.mealsLogged,
+        targets: ctx.targets,
+        goal: ctx.goal
+      });
+      if(res && res.ok && res.data){
+        return res;
+      }
+    }catch(err){
+      console.warn("Backend daily analysis call failed, using intelligent local coach:", err);
+    }
+    const localData = generateSmartDailyAnalysis(ctx);
+    return { ok: true, data: localData };
   },
   async weeklyInsights(ctx){
     return callAiJson("/ai/weekly-insights", {
@@ -1661,7 +1815,7 @@ const NotificationService = {
 function svgRing(pct, colorVar, size){
   size = size||172; const r=size*0.42, c=2*Math.PI*r, cx=size/2, cy=size/2;
   const off = c*(1-clamp(pct,0,1));
-  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+  return `<svg class="nutri-ring" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--card-tint)" stroke-width="14"/>
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(${colorVar})" stroke-width="14" stroke-linecap="round"
       stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dashoffset .5s ease"/>
@@ -1683,7 +1837,7 @@ function svgBarChart(labels, series, opts){
     });
     bars += `<text x="${pad.l+i*groupW+groupW/2}" y="${h-5}" font-size="9.5" fill="var(--ink-faint)" text-anchor="middle" font-family="var(--font-ui)">${esc(lab)}</text>`;
   });
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${gridlines}${bars}</svg>`;
+  return `<svg class="nutri-chart" viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${gridlines}${bars}</svg>`;
 }
 function svgLineChart(points, opts){
   opts=opts||{}; const w=opts.w||420, h=opts.h||150, pad={l:32,r:12,t:14,b:20};
@@ -1700,7 +1854,7 @@ function svgLineChart(points, opts){
   const dots = points.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="2.6" fill="${opts.color||'var(--coral)'}"/>`).join("");
   const labelEvery = Math.ceil(points.length/5)||1;
   const xlabels = points.map((p,i)=> (i%labelEvery===0||i===points.length-1) ? `<text x="${X(i).toFixed(1)}" y="${h-4}" font-size="9" fill="var(--ink-faint)" text-anchor="middle" font-family="var(--font-ui)">${esc(p.label||"")}</text>` : "").join("");
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${grid}
+  return `<svg class="nutri-line" viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${grid}
     <path d="${area}" fill="${opts.fill||'var(--coral-soft)'}" opacity=".55"/>
     <path d="${d}" fill="none" stroke="${opts.color||'var(--coral)'}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     ${dots}${xlabels}</svg>`;
@@ -1714,7 +1868,7 @@ function svgDonut(segments, size){
     paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="18" stroke-dasharray="${len} ${c-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
     offset += len;
   });
-  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${paths}</svg>`;
+  return `<svg class="nutri-donut" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${paths}</svg>`;
 }
 
 /* ============================================================
@@ -2066,9 +2220,9 @@ function renderOnboarding(){
   const step = STATE.onboard.step, d = STATE.onboard.data;
   const totalSteps = 6;
   if(step===0){
-    return `<div class="screen" style="padding-top:14vh;text-align:center;max-width:380px;margin:0 auto">
-      <div style="font-size:50px;margin-bottom:8px">🥗</div>
-      <h1 style="font-size:32px;margin-bottom:8px">Nourish</h1>
+    return `<div class="screen" style="padding-top:10vh;text-align:center;max-width:380px;margin:0 auto">
+      <div style="width:48px;height:48px;margin:0 auto 10px;border-radius:16px;background:var(--coral-soft);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(229,87,63,0.15);font-size:24px">🥗</div>
+      <h1 style="font-size:26px;margin-bottom:6px">Nourish</h1>
       <p class="muted" style="max-width:320px;margin:0 auto 26px;line-height:1.5">Snap a photo, say what you ate, or scan a label — Nourish estimates the nutrition and tracks it against your goals, automatically.</p>
       
       <div class="stack" style="gap:10px;margin-bottom:16px">
@@ -2175,14 +2329,28 @@ async function loadMealsForDate(dateStr){
         console.warn("loadMealsForDate server failed, falling back to local", e);
         list = Object.keys(LocalFallback.store)
           .filter(k=>k.startsWith("meals/"))
-          .map(k=>LocalFallback.store[k])
-          .filter(m=>m && m.date===dateStr);
+          .map(k=>{
+            const m = LocalFallback.store[k];
+            if(!m) return null;
+            const keyId = k.replace(/^meals\//, "");
+            if(!m.id) m.id = keyId;
+            return m;
+          })
+          .filter(Boolean)
+          .filter(m=>m.date===dateStr);
       }
     } else {
       list = Object.keys(LocalFallback.store)
         .filter(k=>k.startsWith("meals/"))
-        .map(k=>LocalFallback.store[k])
-        .filter(m=>m && m.date===dateStr);
+        .map(k=>{
+          const m = LocalFallback.store[k];
+          if(!m) return null;
+          const keyId = k.replace(/^meals\//, "");
+          if(!m.id) m.id = keyId;
+          return m;
+        })
+        .filter(Boolean)
+        .filter(m=>m.date===dateStr);
     }
     list.sort((a,b)=>(a.time||"").localeCompare(b.time||""));
     STATE.todaysMeals = list;
@@ -2497,22 +2665,29 @@ function renderMealsList(meals){
 function renderMealListItem(m){
   const t = m.totals||sumMacros((m.items||[]).map(i=>i.macros));
   const names = (m.items||[]).map(i=>i.name).join(", ");
-  return `<div class="list-item" style="cursor:pointer" onclick="openMealDetail('${m.id}')">
+  const mid = m.id || uid();
+  m.id = mid;
+  return `<div class="list-item" style="cursor:pointer;padding:10px 0;align-items:center" onclick="openMealDetail('${mid}')">
     <div class="thumb">${m.imageAssetId?`<img src="${esc(m.imageUrl||'')}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:(MEAL_ICON[m.mealType]||"🍽️")}</div>
     <div style="flex:1;min-width:0">
       <div class="item-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(names||m.mealType)}</div>
       <div class="item-sub">${prettyTime(m.time)} · ${Math.round(t.cal)} kcal · P${round1(t.p)} C${round1(t.c)} F${round1(t.fat)}</div>
     </div>
-    ${sourceBadge(m.source)}
+    <div style="display:flex;align-items:center;gap:6px;flex:none">
+      ${sourceBadge(m.source)}
+      <button type="button" class="icon-btn" style="width:32px;height:32px;color:var(--danger);border:1px solid var(--line);background:var(--card);border-radius:var(--radius-pill)" onclick="event.stopPropagation(); deleteMeal('${mid}')" title="Delete meal" aria-label="Delete meal">
+        ${ICO.trash}
+      </button>
+    </div>
   </div>`;
 }
 function renderDailyAnalysisBlock(){
   const cache = STATE.dailyAnalysisCache && STATE.dailyAnalysisCache[STATE.selectedDate];
   if(!STATE.todaysMeals || !STATE.todaysMeals.length){
     return `<div style="background:var(--card-tint);border:1px dashed var(--line);border-radius:var(--radius-md);padding:14px;text-align:center">
-      <div style="font-size:26px;margin-bottom:6px">🥗✨</div>
+      <div style="font-size:24px;margin-bottom:6px">🥗✨</div>
       <div style="font-weight:700;font-size:14px;margin-bottom:4px">Ready to analyze today's nutrition</div>
-      <p class="muted small" style="margin-bottom:10px;line-height:1.4">Log your breakfast, lunch or a quick snack to unlock personalized AI feedback and macro balance coaching.</p>
+      <p class="muted small" style="margin-bottom:10px;line-height:1.4">Log your breakfast, lunch or a quick snack to unlock personalized AI feedback, habit scoring, and exact macro balance coaching.</p>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="goTo('log')">+ Log a meal</button>
         <button class="btn btn-outline btn-sm" onclick="openQuickAddSheet()">⚡ Quick add</button>
@@ -2521,17 +2696,109 @@ function renderDailyAnalysisBlock(){
   }
   if(STATE.loading.dailyAnalysis) return `<div class="analyzing-pulse" style="padding:14px"><div class="pulse-ring" style="width:34px;height:34px"></div><div class="muted small">Analyzing today's intake with AI coach…</div></div>`;
   if(cache && cache.ok){
-    const d = cache.data;
-    return `<div class="stack small" style="background:var(--card);padding:12px;border-radius:var(--radius-md);border:1px solid var(--line)">
-      ${d.encouragement ? `<div style="font-weight:700;color:var(--primary);margin-bottom:6px">🌟 ${esc(d.encouragement)}</div>` : ""}
-      <div style="font-weight:600;margin-bottom:4px;color:var(--ink)">Key Observations:</div>
-      ${(d.observations||[]).map(o=>`<div style="display:flex;gap:6px;margin:2px 0"><span style="color:var(--coral)">•</span><span>${esc(o)}</span></div>`).join("")}
-      ${(d.recommendations||[]).length ? `
-        <div class="divider" style="margin:8px 0"></div>
-        <div style="font-weight:600;margin-bottom:4px;color:var(--ink)">Recommendations:</div>
-        ${d.recommendations.map(r=>`<div style="display:flex;gap:6px;margin:2px 0"><span style="color:var(--primary)">💡</span><span>${esc(r)}</span></div>`).join("")}
+    const d = cache.data || {};
+    const scoreVal = typeof d.score === 'number' ? d.score : 8.0;
+    const scoreBg = scoreVal >= 8 ? 'var(--leaf-soft)' : scoreVal >= 6.5 ? 'var(--amber-soft)' : 'var(--danger-soft)';
+    const scoreColor = scoreVal >= 8 ? 'var(--leaf-dark)' : scoreVal >= 6.5 ? 'var(--amber)' : 'var(--danger)';
+    const m = d.macroAnalysis || {};
+
+    return `<div class="stack small" style="background:var(--card);padding:14px;border-radius:var(--radius-md);border:1px solid var(--line);gap:10px">
+      <!-- Top Score Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:15px;color:var(--ink);letter-spacing:-0.01em">${esc(d.verdict || "Daily Nutrition Summary")}</div>
+          <div class="muted small" style="font-size:12px;margin-top:2px">${esc(d.summary || d.encouragement || "")}</div>
+        </div>
+        <div style="background:${scoreBg};color:${scoreColor};font-weight:900;font-size:14px;padding:4px 10px;border-radius:var(--radius-pill);flex:none;box-shadow:var(--shadow-sm);display:inline-flex;align-items:center;gap:4px">
+          <span>⭐</span><span>${scoreVal.toFixed(1)}/10</span>
+        </div>
+      </div>
+
+      <!-- Macro Deltas Breakdown Grid -->
+      ${m.calories ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(95px, 1fr));gap:6px;margin:4px 0">
+          <div style="background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 8px;text-align:center">
+            <div class="muted" style="font-size:10px;font-weight:700;text-transform:uppercase">Calories</div>
+            <div style="font-size:12.5px;font-weight:800;color:var(--ink)">${Math.round(m.calories.consumed)} / ${Math.round(m.calories.target)}</div>
+            <div style="font-size:10.5px;font-weight:700;color:${m.calories.delta > 150 ? 'var(--coral)' : 'var(--primary)'}">${m.calories.delta >= 0 ? '+' : ''}${Math.round(m.calories.delta)} kcal</div>
+          </div>
+          <div style="background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 8px;text-align:center">
+            <div class="muted" style="font-size:10px;font-weight:700;text-transform:uppercase">Protein</div>
+            <div style="font-size:12.5px;font-weight:800;color:var(--ink)">${round1(m.protein.consumed)}g / ${round1(m.protein.target)}g</div>
+            <div style="font-size:10.5px;font-weight:700;color:${m.protein.delta >= 0 ? 'var(--primary)' : 'var(--coral)'}">${m.protein.delta >= 0 ? '+' : ''}${round1(m.protein.delta)}g</div>
+          </div>
+          <div style="background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 8px;text-align:center">
+            <div class="muted" style="font-size:10px;font-weight:700;text-transform:uppercase">Carbs</div>
+            <div style="font-size:12.5px;font-weight:800;color:var(--ink)">${round1(m.carbs.consumed)}g / ${round1(m.carbs.target)}g</div>
+            <div style="font-size:10.5px;font-weight:700;color:var(--ink-soft)">${m.carbs.delta >= 0 ? '+' : ''}${round1(m.carbs.delta)}g</div>
+          </div>
+          <div style="background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 8px;text-align:center">
+            <div class="muted" style="font-size:10px;font-weight:700;text-transform:uppercase">Fat</div>
+            <div style="font-size:12.5px;font-weight:800;color:var(--ink)">${round1(m.fat.consumed)}g / ${round1(m.fat.target)}g</div>
+            <div style="font-size:10.5px;font-weight:700;color:var(--ink-soft)">${m.fat.delta >= 0 ? '+' : ''}${round1(m.fat.delta)}g</div>
+          </div>
+          <div style="background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 8px;text-align:center">
+            <div class="muted" style="font-size:10px;font-weight:700;text-transform:uppercase">Fiber</div>
+            <div style="font-size:12.5px;font-weight:800;color:var(--ink)">${round1(m.fiber.consumed)}g / ${round1(m.fiber.target)}g</div>
+            <div style="font-size:10.5px;font-weight:700;color:${m.fiber.delta >= 0 ? 'var(--primary)' : 'var(--coral)'}">${m.fiber.delta >= 0 ? '+' : ''}${round1(m.fiber.delta)}g</div>
+          </div>
+        </div>
       ` : ""}
-      <button class="link-btn" style="margin-top:8px;align-self:flex-start" onclick="runDailyAnalysis(true)">↻ Re-analyze</button>
+
+      <!-- Meal Pacing Insight -->
+      ${d.mealPacingInsight ? `
+        <div style="background:var(--card-tint);border-radius:var(--radius-sm);padding:8px 10px;border-left:3px solid var(--primary)">
+          <div style="font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;margin-bottom:2px">⏰ Meal Pacing & Protein Timing</div>
+          <div style="font-size:12.5px;color:var(--ink);line-height:1.4">${esc(d.mealPacingInsight)}</div>
+        </div>
+      ` : ""}
+
+      <!-- Actionable Swaps with Exact Grams -->
+      ${(d.actionableSwaps && d.actionableSwaps.length) ? `
+        <div>
+          <div style="font-size:12px;font-weight:800;color:var(--ink);margin:4px 0 6px">⚖️ Actionable Food Swaps & Portions:</div>
+          <div class="stack" style="gap:6px">
+            ${d.actionableSwaps.map(s=>`
+              <div style="background:rgba(235,94,65,0.05);border:1px solid rgba(235,94,65,0.15);border-radius:var(--radius-sm);padding:7px 10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+                  <b style="font-size:12.5px;color:var(--ink)">${esc(s.food)}</b>
+                  <span class="muted small" style="font-size:11px">${esc(s.when)}</span>
+                </div>
+                <div class="small" style="color:var(--ink-soft);margin-top:2px;font-size:11.5px">
+                  <span>${esc(s.benefit)}</span> · <span style="color:var(--coral);font-weight:600">${esc(s.impact)}</span>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      ` : ""}
+
+      <!-- Key Observations / Strengths & Gaps -->
+      ${((d.strengths && d.strengths.length) || (d.observations && d.observations.length)) ? `
+        <div class="divider" style="margin:4px 0"></div>
+        <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:4px">Key Observations:</div>
+        ${((d.strengths && d.strengths.length) ? [...d.strengths, ...(d.gaps||[])] : (d.observations||[])).map(o=>`
+          <div style="display:flex;gap:6px;margin:2px 0;font-size:12.5px;line-height:1.4">
+            <span style="color:var(--coral)">•</span><span>${esc(o)}</span>
+          </div>
+        `).join("")}
+      ` : ""}
+
+      <!-- Recommendations / Tomorrow Tactics -->
+      ${((d.tomorrowTactics && d.tomorrowTactics.length) || (d.recommendations && d.recommendations.length)) ? `
+        <div class="divider" style="margin:4px 0"></div>
+        <div style="font-size:12px;font-weight:800;color:var(--ink);margin-bottom:4px">💡 Tactics for Tomorrow:</div>
+        ${((d.tomorrowTactics && d.tomorrowTactics.length) ? d.tomorrowTactics : d.recommendations).map(r=>`
+          <div style="display:flex;gap:6px;margin:3px 0;font-size:12.5px;line-height:1.4">
+            <span style="color:var(--primary)">✓</span><span>${esc(r)}</span>
+          </div>
+        `).join("")}
+      ` : ""}
+
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+        <button class="link-btn" style="padding:4px 8px;min-height:32px" onclick="runDailyAnalysis(true)">↻ Re-analyze</button>
+        <button class="link-btn" style="color:var(--primary);padding:4px 8px;min-height:32px;margin-left:auto" onclick="openWhatToEat()">✨ Plan meals</button>
+      </div>
     </div>`;
   }
   if(cache && !cache.ok){ return `<div class="error-box">${esc(cache.message)}</div><button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="runDailyAnalysis(true)">Try again</button>`; }
@@ -3144,7 +3411,22 @@ function sheetReviewDraftContent(){
     </div>
     <button class="btn btn-primary btn-block" onclick="saveDraftMeal()" ${!items.length ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
       ${d.editId ? 'Save meal changes' : 'Save meal'}
-    </button>`;
+    </button>
+    ${d.editId ? `
+      <button type="button" class="btn btn-outline btn-block" style="color:var(--danger);border-color:var(--danger);font-weight:700;margin-top:8px" onclick="deleteMeal('${d.editId}')">
+        ${ICO.trash} Delete this meal
+      </button>
+    ` : `
+      <button type="button" class="btn btn-ghost btn-block" style="margin-top:8px" onclick="discardDraft()">
+        Discard draft
+      </button>
+    `}`;
+}
+
+function discardDraft(){
+  STATE.draftMeal = null;
+  closeSheet();
+  toast("Draft discarded");
 }
 
 function stepDraftItemQty(idx, delta){
@@ -3772,11 +4054,28 @@ function editMealDraft(mealId){
   closeSheet(); openReviewDraftSheet();
 }
 async function deleteMeal(mealId){
-  const ok = await confirmModal({title:"Delete this meal?", body:"This can't be undone.", confirmLabel:"Delete", danger:true});
+  if(!mealId) return;
+  const ok = await confirmModal({title:"Delete this meal?", body:"This can't be undone. Are you sure you want to remove this logged meal?", confirmLabel:"Delete", danger:true});
   if(!ok) return;
-  await StorageService.deleteFromCollection("meals", mealId);
-  closeSheet(); toast("Meal deleted");
-  await loadMealsForDate(STATE.selectedDate); await refreshAllMealsCache(); render();
+
+  // Optimistically remove from state immediately for snappy response
+  STATE.todaysMeals = (STATE.todaysMeals||[]).filter(m => String(m.id) !== String(mealId));
+  STATE._allMealsCache = (STATE._allMealsCache||[]).filter(m => String(m.id) !== String(mealId));
+  if(STATE.draftMeal && String(STATE.draftMeal.editId) === String(mealId)){
+    STATE.draftMeal = null;
+  }
+  closeSheet();
+  toast("Meal deleted");
+  render();
+
+  try{
+    await StorageService.deleteFromCollection("meals", mealId);
+  }catch(err){
+    console.warn("deleteMeal storage error:", err);
+  }
+  await loadMealsForDate(STATE.selectedDate);
+  await refreshAllMealsCache();
+  render();
 }
 
 function openEditQuickMealSheet(mealId){
@@ -3855,6 +4154,9 @@ function sheetEditQuickMealContent(props){
     <div class="stack" style="gap:8px;margin-top:14px">
       <button class="btn btn-primary btn-block" style="font-weight:700" onclick="saveQuickMealEdits('${props.mealId}')">
         Save Changes (${cal} kcal)
+      </button>
+      <button type="button" class="btn btn-outline btn-block" style="color:var(--danger);border-color:var(--danger);font-weight:700" onclick="deleteMeal('${props.mealId}')">
+        ${ICO.trash} Delete this meal
       </button>
       <button class="btn btn-ghost btn-block" onclick="openMealDetail('${props.mealId}')">
         Cancel
@@ -7023,10 +7325,10 @@ function renderAuthScreen(){
     <div class="card" style="border-radius:24px;padding:26px 20px;box-shadow:0 8px 30px rgba(0,0,0,0.06);border:1px solid var(--line);background:var(--card);text-align:center">
       
       <!-- Brand Icon & Header -->
-      <div style="width:64px;height:64px;margin:0 auto 12px;border-radius:20px;background:var(--coral-soft);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(229,87,63,0.18);font-size:32px">
+      <div style="width:48px;height:48px;margin:0 auto 10px;border-radius:16px;background:var(--coral-soft);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(229,87,63,0.15);font-size:24px">
         🥗
       </div>
-      <h1 style="font-family:var(--font-display);font-size:27px;font-weight:700;margin:0 0 6px;color:var(--ink);letter-spacing:-0.02em">${title}</h1>
+      <h1 style="font-family:var(--font-display);font-size:23px;font-weight:700;margin:0 0 5px;color:var(--ink);letter-spacing:-0.02em">${title}</h1>
       <p class="muted small" style="margin:0 auto 20px;max-width:300px;line-height:1.45;color:var(--ink-soft)">${subtitle}</p>
 
       <!-- Segmented Tab: Log In vs Create Account -->

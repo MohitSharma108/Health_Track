@@ -24,8 +24,8 @@ export function useAddMeal() {
   return useMutation({
     mutationFn: (meal) => api.post('/meals', meal),
     onSuccess: (_, vars) => {
-      qc.invalidateQueries(mealKeys.byDate(vars.date))
-      qc.invalidateQueries(mealKeys.all)
+      qc.invalidateQueries({ queryKey: mealKeys.byDate(vars.date) })
+      qc.invalidateQueries({ queryKey: mealKeys.all })
     },
   })
 }
@@ -34,7 +34,7 @@ export function useUpdateMeal() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, ...body }) => api.put(`/meals/${id}`, body),
-    onSuccess: () => qc.invalidateQueries(mealKeys.all),
+    onSuccess: () => qc.invalidateQueries({ queryKey: mealKeys.all }),
   })
 }
 
@@ -42,6 +42,6 @@ export function useDeleteMeal() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id) => api.delete(`/meals/${id}`),
-    onSuccess: () => qc.invalidateQueries(mealKeys.all),
+    onSuccess: () => qc.invalidateQueries({ queryKey: mealKeys.all }),
   })
 }
