@@ -360,7 +360,8 @@ input:focus-visible, button:focus-visible, .choice:focus-visible, .chip:focus-vi
   color:var(--coral);
   transform:translateX(2px);
 }
-.icon-chevron, .log-option-chevron svg, .draft-bar-icon svg, .log-options-grid svg{
+.icon-chevron, .log-option-chevron svg, .draft-bar-icon svg, .log-options-grid svg,
+.ico-sparkle, .card .row > svg, .row > svg, h3 + svg, h3 > svg, svg.ico{
   width:18px !important;
   height:18px !important;
   min-width:18px !important;
@@ -1779,7 +1780,7 @@ const ICO = {
   search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
   send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>',
   droplet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 8 7 12.5a7 7 0 01-14 0C5 10 12 2 12 2z"/></svg>',
-  sparkle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/></svg>',
+  sparkle:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-sparkle" style="width:18px;height:18px;min-width:18px;min-height:18px;max-width:18px;max-height:18px;flex:0 0 18px" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/></svg>',
   scale:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="7"/><path d="M9 2h6M12 14l3-3"/></svg>',
   book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 016.5 2H20v17H6.5A2.5 2.5 0 004 16.5z"/><path d="M4 16.5A2.5 2.5 0 016.5 19H20"/></svg>',
   doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5M9 13h6M9 17h6M9 9h2"/></svg>',
@@ -2393,7 +2394,7 @@ function renderHome(){
         ${renderMealsList(STATE.todaysMeals)}
 
         <div class="card" style="margin-top:14px">
-          <div class="row"><h3 style="margin:0">AI daily analysis</h3>${ICO.sparkle}</div>
+          <div class="row" style="align-items:center;margin-bottom:8px"><h3 style="margin:0;font-size:16px">AI daily analysis</h3><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;min-width:20px;min-height:20px;flex:0 0 20px;color:var(--coral)">${ICO.sparkle}</span></div>
           ${renderDailyAnalysisBlock()}
         </div>
         <div class="disclaimer">Estimates only — not medical advice. Nourish never diagnoses conditions.</div>
@@ -2580,8 +2581,8 @@ function renderLogHub(){
   return `<div class="screen">
     <div class="field" style="margin-bottom:10px">
       <div style="position:relative">
-        <input type="text" value="${esc(q)}" oninput="STATE._searchQ=this.value; render(); this.focus(); this.setSelectionRange(this.value.length,this.value.length)" placeholder="Search foods, e.g. oats, paneer, banana" style="padding-left:38px">
-        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint)">${ICO.search}</span>
+        <input type="text" id="logFoodSearchInput" value="${esc(q)}" oninput="handleLogSearchInput(this.value)" placeholder="Search foods, e.g. oats, paneer, banana" style="padding-left:38px">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);pointer-events:none;width:18px;height:18px;display:flex;align-items:center">${ICO.search}</span>
       </div>
     </div>
     <div class="choice-grid c3" style="margin-bottom:16px">
@@ -2589,9 +2590,22 @@ function renderLogHub(){
       <button class="card tight" style="text-align:center;cursor:pointer" onclick="openVoiceLog()"><div style="color:var(--coral)">${ICO.mic}</div><div class="small" style="font-weight:700;margin-top:4px">Voice / text</div></button>
       <button class="card tight" style="text-align:center;cursor:pointer" onclick="openLabelScan()"><div style="color:var(--coral)">${ICO.tag}</div><div class="small" style="font-weight:700;margin-top:4px">Label</div></button>
     </div>
-    ${q ? renderSearchResults(results) : renderLogBrowse(recentFoods)}
+    <div id="logSearchResultsContainer">
+      ${q ? renderSearchResults(results) : renderLogBrowse(recentFoods)}
+    </div>
   </div>
   ${(draft && draft.items && draft.items.length) ? renderDraftBar() : ""}`;
+}
+
+function handleLogSearchInput(val){
+  STATE._searchQ = val;
+  const container = document.getElementById("logSearchResultsContainer");
+  if(container){
+    const q = val.trim();
+    const results = q ? searchFoods(q) : [];
+    const recentFoods = recentFoodIds().slice(0,8).map(findFoodById).filter(Boolean);
+    container.innerHTML = q ? renderSearchResults(results) : renderLogBrowse(recentFoods);
+  }
 }
 function renderSearchResults(results){
   if(!results.length) return `<div class="empty-state"><div class="icon">🔍</div><h4>No matches</h4><p class="small">Try a different search, or add a custom food.</p><button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="openCustomFoodSheet()">+ Add custom food</button></div>`;
@@ -2801,12 +2815,28 @@ function sheetAddFoodContent(props){
       </div>
     </div>
 
-    ${renderEstimatedNutritionCard(m, isCustomized ? "Custom nutrition" : "Estimated nutrition")}
-    <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="confirmAddFood()">
+    <div id="addFoodLivePreviewContainer">
+      ${renderEstimatedNutritionCard(m, isCustomized ? "Custom nutrition" : "Estimated nutrition")}
+    </div>
+    <button id="addFoodConfirmBtn" class="btn btn-primary btn-block" style="margin-top:14px" onclick="confirmAddFood()">
       Add to meal (${Math.round(m.cal)} kcal · ${round1(m.p)}g P)
     </button>`;
 }
 function refreshSheet(){ render(); }
+function updateAddFoodLivePreview(){
+  const props = STATE.sheet && STATE.sheet.props;
+  if(!props) return;
+  const f = findFoodById(props.foodId);
+  const m = props.customMacros || (f ? macrosForQty(f, props.qty, props.unit) : {cal:0, p:0, c:0, fat:0, fib:0});
+  const prevEl = document.getElementById("addFoodLivePreviewContainer");
+  if(prevEl){
+    prevEl.innerHTML = renderEstimatedNutritionCard(m, props.customMacros ? "Custom nutrition" : "Estimated nutrition");
+  }
+  const btnEl = document.getElementById("addFoodConfirmBtn");
+  if(btnEl){
+    btnEl.innerHTML = `Add to meal (${Math.round(m.cal)} kcal · ${round1(m.p)}g P)`;
+  }
+}
 function setAddFoodQtyInput(val){
   const props = STATE.sheet.props;
   const oldQty = Number(props.qty) || 1;
@@ -2816,7 +2846,7 @@ function setAddFoodQtyInput(val){
     scaleCustomMacros(props.customMacros, ratio);
   }
   props.qty = newQty;
-  refreshSheet();
+  updateAddFoodLivePreview();
 }
 function setAddFoodUnitSelect(u){
   const props = STATE.sheet.props;
@@ -2843,7 +2873,7 @@ function setAddFoodCustomMacro(key, val){
   const std = macrosForQty(f, props.qty, props.unit);
   props.customMacros = Object.assign({}, std, props.customMacros || {});
   props.customMacros[key] = Math.max(0, Number(val)||0);
-  refreshSheet();
+  updateAddFoodLivePreview();
 }
 function resetAddFoodCustomMacros(){
   const props = STATE.sheet.props;
@@ -3188,7 +3218,7 @@ function sheetEditDraftItemContent(props){
         <label>Quantity / Portion</label>
         <div class="row" style="gap:6px">
           <button type="button" class="icon-btn" style="flex:none" onclick="stepEditItemQty(${-step})" aria-label="Decrease">−</button>
-          <input type="number" step="${step}" min="0.1" value="${props.qty}" style="text-align:center;font-weight:700;font-size:16px" oninput="STATE.sheet.props.qty=Math.max(0.1, Number(this.value)||0); refreshSheet()">
+          <input type="number" step="${step}" min="0.1" value="${props.qty}" style="text-align:center;font-weight:700;font-size:16px" oninput="setEditDraftQtyInput(this.value)">
           <button type="button" class="icon-btn" style="flex:none" onclick="stepEditItemQty(${step})" aria-label="Increase">+</button>
         </div>
       </div>
@@ -3272,7 +3302,9 @@ function sheetEditDraftItemContent(props){
     </div>
 
     <!-- Nutrition Preview Card -->
-    ${renderEstimatedNutritionCard(previewMacros, "Estimated nutrition")}
+    <div id="editDraftItemLivePreview">
+      ${renderEstimatedNutritionCard(previewMacros, "Estimated nutrition")}
+    </div>
 
     <!-- Actions -->
     <div class="stack" style="gap:8px">
@@ -3290,13 +3322,49 @@ function sheetEditDraftItemContent(props){
     </div>`;
 }
 
+function updateEditDraftItemLivePreview(){
+  const props = STATE.sheet && STATE.sheet.props;
+  if(!props) return;
+  const d = ensureDraft();
+  const it = d.items && d.items[props.idx];
+  const f = it && it.foodId ? findFoodById(it.foodId) : null;
+  let pm = props.customMacros;
+  if(!pm){
+    if(f){
+      pm = macrosForQty(f, props.qty, props.unit);
+    } else {
+      const oldQty = Number(props.oldQty || it?.qty) || 1;
+      const ratio = (Number(props.qty) || 1) / (oldQty > 0 ? oldQty : 1);
+      pm = {
+        cal: Math.round(((it?.macros||{}).cal || 0) * ratio),
+        p: round1(((it?.macros||{}).p || 0) * ratio),
+        c: round1(((it?.macros||{}).c || 0) * ratio),
+        fat: round1(((it?.macros||{}).fat || 0) * ratio),
+        fib: round1(((it?.macros||{}).fib || 0) * ratio),
+      };
+    }
+  }
+  const el = document.getElementById("editDraftItemLivePreview");
+  if(el){
+    el.innerHTML = renderEstimatedNutritionCard(pm, "Estimated nutrition");
+  }
+}
+
 function setCustomEditMacro(key, val){
-  const props = STATE.sheet.props;
+  const props = STATE.sheet && STATE.sheet.props;
+  if(!props) return;
   props.customMacros = props.customMacros || {
     cal: props.cal, p: props.p, c: props.c, fat: props.fat, fib: props.fib, sug: props.sug||0, sat: props.sat||0, sod: props.sod||0
   };
   props.customMacros[key] = Math.max(0, Number(val)||0);
-  refreshSheet();
+  updateEditDraftItemLivePreview();
+}
+
+function setEditDraftQtyInput(val){
+  const props = STATE.sheet && STATE.sheet.props;
+  if(!props) return;
+  props.qty = Math.max(0.1, Number(val)||0);
+  updateEditDraftItemLivePreview();
 }
 
 function stepEditItemQty(delta){
@@ -3417,7 +3485,7 @@ function sheetAddDraftCustomItemContent(props){
     <div class="row" style="gap:10px">
       <div class="field" style="flex:1">
         <label>Quantity</label>
-        <input type="number" step="1" min="0.1" value="${p.qty}" oninput="STATE.sheet.props.qty=Math.max(0.1, Number(this.value)||0); refreshSheet()">
+        <input type="number" step="1" min="0.1" value="${p.qty}" oninput="STATE.sheet.props.qty=Math.max(0.1, Number(this.value)||0); updateDraftCustomItemLivePreview()">
       </div>
       <div class="field" style="flex:1">
         <label>Unit</label>
@@ -3440,21 +3508,21 @@ function sheetAddDraftCustomItemContent(props){
       <div class="row" style="gap:8px;margin-bottom:8px">
         <div class="field" style="flex:1;margin-bottom:0">
           <label style="font-size:11.5px">Calories (kcal) *</label>
-          <input type="number" value="${cal}" style="font-weight:700;color:var(--coral)" oninput="STATE.sheet.props.cal=Number(this.value)||0; refreshSheet()">
+          <input type="number" value="${cal}" style="font-weight:700;color:var(--coral)" oninput="STATE.sheet.props.cal=Number(this.value)||0; updateDraftCustomItemLivePreview()">
         </div>
         <div class="field" style="flex:1;margin-bottom:0">
           <label style="font-size:11.5px">Protein (g)</label>
-          <input type="number" step="0.1" value="${prot}" style="font-weight:700" oninput="STATE.sheet.props.p=Number(this.value)||0; refreshSheet()">
+          <input type="number" step="0.1" value="${prot}" style="font-weight:700" oninput="STATE.sheet.props.p=Number(this.value)||0; updateDraftCustomItemLivePreview()">
         </div>
       </div>
       <div class="row" style="gap:8px;margin-bottom:8px">
         <div class="field" style="flex:1;margin-bottom:0">
           <label style="font-size:11.5px">Carbs (g)</label>
-          <input type="number" step="0.1" value="${carb}" style="font-weight:700" oninput="STATE.sheet.props.c=Number(this.value)||0; refreshSheet()">
+          <input type="number" step="0.1" value="${carb}" style="font-weight:700" oninput="STATE.sheet.props.c=Number(this.value)||0; updateDraftCustomItemLivePreview()">
         </div>
         <div class="field" style="flex:1;margin-bottom:0">
           <label style="font-size:11.5px">Fat (g)</label>
-          <input type="number" step="0.1" value="${fat}" style="font-weight:700" oninput="STATE.sheet.props.fat=Number(this.value)||0; refreshSheet()">
+          <input type="number" step="0.1" value="${fat}" style="font-weight:700" oninput="STATE.sheet.props.fat=Number(this.value)||0; updateDraftCustomItemLivePreview()">
         </div>
       </div>
 
@@ -3463,34 +3531,54 @@ function sheetAddDraftCustomItemContent(props){
         <div class="row" style="gap:6px">
           <div class="field" style="flex:1;margin-bottom:0">
             <label style="font-size:10px">🌾 Fibre (g)</label>
-            <input type="number" step="0.1" value="${fib}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.fib=Number(this.value)||0; refreshSheet()">
+            <input type="number" step="0.1" value="${fib}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.fib=Number(this.value)||0; updateDraftCustomItemLivePreview()">
           </div>
           <div class="field" style="flex:1;margin-bottom:0">
             <label style="font-size:10px">🍬 Sugar (g)</label>
-            <input type="number" step="0.1" value="${sug}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.sug=Number(this.value)||0; refreshSheet()">
+            <input type="number" step="0.1" value="${sug}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.sug=Number(this.value)||0; updateDraftCustomItemLivePreview()">
           </div>
           <div class="field" style="flex:1;margin-bottom:0">
             <label style="font-size:10px">🧈 Sat Fat (g)</label>
-            <input type="number" step="0.1" value="${sat}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.sat=Number(this.value)||0; refreshSheet()">
+            <input type="number" step="0.1" value="${sat}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.sat=Number(this.value)||0; updateDraftCustomItemLivePreview()">
           </div>
           <div class="field" style="flex:1;margin-bottom:0">
             <label style="font-size:10px">🧂 Sodium (mg)</label>
-            <input type="number" value="${sod}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.sod=Number(this.value)||0; refreshSheet()">
+            <input type="number" value="${sod}" style="font-size:12px;padding:6px 4px;text-align:center" oninput="STATE.sheet.props.sod=Number(this.value)||0; updateDraftCustomItemLivePreview()">
           </div>
         </div>
       </div>
     </div>
 
-    ${renderEstimatedNutritionCard({cal, p:prot, c:carb, fat, fib}, "Portion nutrition preview")}
+    <div id="draftCustomItemLivePreview">
+      ${renderEstimatedNutritionCard({cal, p:prot, c:carb, fat, fib}, "Portion nutrition preview")}
+    </div>
 
     <div class="stack" style="gap:8px;margin-top:12px">
-      <button class="btn btn-primary btn-block" onclick="saveAddDraftCustomItem()">
+      <button id="draftCustomItemConfirmBtn" class="btn btn-primary btn-block" onclick="saveAddDraftCustomItem()">
         ➕ Add to meal (${cal} kcal · ${prot}g P)
       </button>
       <button class="btn btn-ghost btn-block" onclick="openReviewDraftSheet()">
         Cancel
       </button>
     </div>`;
+}
+
+function updateDraftCustomItemLivePreview(){
+  const p = STATE.sheet && STATE.sheet.props;
+  if(!p) return;
+  const cal = Number(p.cal)||0;
+  const prot = Number(p.p)||0;
+  const carb = Number(p.c)||0;
+  const fat = Number(p.fat)||0;
+  const fib = Number(p.fib)||0;
+  const el = document.getElementById("draftCustomItemLivePreview");
+  if(el){
+    el.innerHTML = renderEstimatedNutritionCard({cal, p:prot, c:carb, fat, fib}, "Portion nutrition preview");
+  }
+  const btn = document.getElementById("draftCustomItemConfirmBtn");
+  if(btn){
+    btn.innerHTML = `➕ Add to meal (${Math.round(cal)} kcal · ${round1(prot)}g P)`;
+  }
 }
 
 function saveAddDraftCustomItem(){
