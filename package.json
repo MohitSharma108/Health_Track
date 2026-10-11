@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node backend/src/server.js",
     "dev": "cd backend && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build:client": "cd client && npm run build",
     "postinstall": "cd backend && npm install"
   },
   "keywords": [
