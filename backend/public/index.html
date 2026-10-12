@@ -4455,13 +4455,18 @@ function renderScan(){
       <div class="analyzing-pulse"><div class="pulse-ring"></div><div style="font-weight:700">Analyzing your meal…</div><div class="muted small">This can take up to a minute or two</div></div>
       <button class="btn btn-ghost btn-block" onclick="cancelScan()">Cancel</button>`;
   } else if(s.status==="error"){
+    const isNoFood = s.error && s.error.toLowerCase().includes("no food");
     inner = `<div class="camera-frame"><img src="${s.previewUrl}"></div>
-      <div class="error-box" style="margin:16px 0">${esc(s.error)}</div>
-      <div class="choice-grid">
-        <button class="btn btn-ghost" onclick="STATE.scan=freshScanState(); render()">Retake photo</button>
-        <button class="btn btn-primary" onclick="retryScan()">Try again</button>
+      <div class="card" style="margin:16px 0;border:1.5px solid ${isNoFood ? 'var(--amber)' : 'var(--danger)'};background:${isNoFood ? 'var(--amber-soft)' : 'var(--danger-soft)'};padding:14px;border-radius:var(--radius-md);text-align:center">
+        <div style="font-size:30px;margin-bottom:4px">${isNoFood ? '🍽️' : '⚠️'}</div>
+        <div style="font-weight:700;font-size:15px;color:var(--ink);margin-bottom:4px">${isNoFood ? 'No Food Detected' : 'Scan Issue'}</div>
+        <div style="font-size:13px;color:var(--ink-soft);line-height:1.45">${esc(s.error)}</div>
       </div>
-      <button class="btn btn-outline btn-block" style="margin-top:10px" onclick="goTo('log')">Log manually instead</button>`;
+      <div class="choice-grid">
+        <button class="btn btn-primary" onclick="startCameraMode()">📸 Retake Photo</button>
+        <button class="btn btn-outline" onclick="STATE.scan=freshScanState(); render()">Upload Image</button>
+      </div>
+      <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="goTo('log')">✏️ Log meal manually instead</button>`;
   } else if(s.status==="results"){
     const t = sumMacros(s.items.map(i=>i.macros));
     inner = `<div class="row" style="padding:14px 4px 10px"><button class="icon-btn" onclick="STATE.scan=freshScanState(); render()">${ICO.back}</button><div class="greet" style="font-size:19px;flex:1;text-align:center">Review meal</div><div style="width:38px"></div></div>

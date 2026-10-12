@@ -1,76 +1,132 @@
 'use strict';
-const { askJSON, MEDICAL_GUARDRAIL } = require('./anthropicClient');
+const anthropicClient = require('./anthropicClient');
+const { MEDICAL_GUARDRAIL } = anthropicClient;
+const { ApiError } = require('../../middleware/errorHandler');
 
 /**
- * FoodRecognitionService — the AI half of the scan pipeline described in
- * ARCHITECTURE.md:
- *   image upload -> preprocessing -> [this service] -> user confirmation
- *   -> NutritionMatchingService / direct macros -> save meal
- * `imageBase64` is already resized/validated by the upload middleware
- * before it reaches here (see routes/ai.routes.js).
+ * FoodRecognitionService — Production-grade AI food vision recognition.
+ * Strictly verifies whether actual food is present in the uploaded image.
+ * Never fabricates mock food items if the photo is a selfie, face, object, or non-food.
  */
 async function analyzeFoodPhoto({ imageBase64, mediaType, note }) {
-  if (process.env.GROQ_API_KEY || process.env.ANTHROPIC_API_KEY) {
-    try {
-      const prompt = `${MEDICAL_GUARDRAIL}
-You are the food-recognition module of a nutrition app. Look at the attached photo of a meal and identify
-each distinct food item visible.${note ? `\nUser note: ${note}` : ''}
-For each item estimate a realistic portion (use a range if uncertain) and typical nutrition for that portion.
-Reply with ONLY a JSON object:
-{"items":[{"name":string,"portionEstimate":string (e.g. "150-180 g"),"portionGrams":number,"unit":string,
-"calories":number,"protein":number,"carbs":number,"fat":number,"fibre":number,"confidence":number (0-1)}],
-"notes":string}
-If you cannot identify any food, return {"items":[],"notes":"reason"}. Numbers are for the ESTIMATED
-PORTION, not per 100g. Never claim certainty; this is a visual estimate.`;
-
-      return await askJSON({ prompt, images: [{ base64: imageBase64, mediaType }], maxTokens: 1500 });
-    } catch (err) {
-      console.warn('AI vision call failed, falling back to smart meal estimation:', err.message);
+  if (!process.env.GROQ_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    if (note && note.trim()) {
+      return {
+        items: [{
+          name: note.trim().slice(0, 50),
+          portionEstimate: "1 standard serving (~200g)",
+          portionGrams: 200,
+          unit: "serving",
+          calories: 320,
+          protein: 24,
+          carbs: 35,
+          fat: 10,
+          fibre: 4,
+          confidence: 0.8
+        }],
+        notes: "Estimated from description (No AI vision API key configured in backend .env)."
+      };
     }
+    return {
+      items: [],
+      notes: "No AI vision API key configured (add GROQ_API_KEY in backend .env). Please describe your food or log manually."
+    };
   }
 
-  // Smart heuristic fallback: provides realistic food detection so camera & photo uploads
-  // remain 100% functional even before an Anthropic API key is added.
-  const hour = new Date().getHours();
-  let items = [];
-  if (note && note.trim()) {
-    items.push({
-      name: note.trim().slice(0, 50),
-      portionEstimate: "1 standard serving (~200g)",
-      portionGrams: 200,
-      unit: "serving",
-      calories: 320,
-      protein: 24,
-      carbs: 35,
-      fat: 10,
-      fibre: 4,
-      confidence: 0.85
-    });
-  } else if (hour < 11) {
-    items = [
-      { name: "Oatmeal with Mixed Berries", portionEstimate: "1 bowl (~180g)", portionGrams: 180, unit: "g", calories: 210, protein: 6, carbs: 40, fat: 3.5, fibre: 5.5, confidence: 0.88 },
-      { name: "Scrambled Eggs", portionEstimate: "2 large eggs (~100g)", portionGrams: 100, unit: "g", calories: 148, protein: 12.6, carbs: 1.2, fat: 10, fibre: 0, confidence: 0.85 }
-    ];
-  } else if (hour < 17) {
-    items = [
-      { name: "Grilled Chicken Breast", portionEstimate: "1 breast (~150g)", portionGrams: 150, unit: "g", calories: 248, protein: 46.5, carbs: 0, fat: 5.4, fibre: 0, confidence: 0.90 },
-      { name: "Brown Rice", portionEstimate: "1 cup cooked (~150g)", portionGrams: 150, unit: "g", calories: 195, protein: 4.3, carbs: 42, fat: 1.2, fibre: 1.8, confidence: 0.86 },
-      { name: "Steamed Broccoli", portionEstimate: "1 cup (~100g)", portionGrams: 100, unit: "g", calories: 45, protein: 2.8, carbs: 8.5, fat: 0.5, fibre: 3.2, confidence: 0.82 }
-    ];
-  } else {
-    items = [
-      { name: "Baked Salmon Fillet", portionEstimate: "1 fillet (~150g)", portionGrams: 150, unit: "g", calories: 312, protein: 34, carbs: 0, fat: 18, fibre: 0, confidence: 0.91 },
-      { name: "Roasted Sweet Potato", portionEstimate: "1 medium (~130g)", portionGrams: 130, unit: "g", calories: 112, protein: 2, carbs: 26, fat: 0.1, fibre: 3.9, confidence: 0.87 },
-      { name: "Mixed Green Salad", portionEstimate: "1 side bowl (~100g)", portionGrams: 100, unit: "g", calories: 75, protein: 1.5, carbs: 4, fat: 6, fibre: 2, confidence: 0.84 }
-    ];
-  }
+  const prompt = `${MEDICAL_GUARDRAIL}
+You are an expert AI food-recognition model inside a nutrition tracking app.
+Analyze the attached image with high precision.
 
-  return {
-    items,
-    notes: (process.env.GROQ_API_KEY || process.env.ANTHROPIC_API_KEY)
-      ? "AI visual meal scan complete."
-      : "Visual meal estimate ready. (Add GROQ_API_KEY to backend .env for live Groq Vision)."
-  };
+CRITICAL INSTRUCTIONS:
+1. FOOD DETECTION FIRST:
+   Check whether this image contains actual edible food, a meal, dish, or beverage.
+   If NO FOOD is visible (e.g. human face, selfie, person, body part, clothing, furniture, room, pet, outdoor scenery, blank surface, device screen, or an app screenshot with no actual physical food plate):
+   You MUST return:
+   {"items": [], "notes": "No food detected in this photo. Please point the camera directly at your meal, plate, or beverage."}
+   NEVER guess, fabricate, or hallucinate food if no food is present.
+   NEVER parse text from app screenshots as if it were a photographed meal.
+
+2. WHEN REAL FOOD IS PRESENT:
+   Break down the dish into its individual food items.
+   For each item, estimate the realistic portion in grams and its nutritional content for that specific portion (not per 100g).
+   Return:
+   {
+     "items": [
+       {
+         "name": "Food name (e.g. Steamed White Rice, Dal Tadka, Paneer Bhurji)",
+         "portionEstimate": "Serving description (e.g. 1 bowl (~150g))",
+         "portionGrams": 150,
+         "unit": "g",
+         "calories": 195,
+         "protein": 4.5,
+         "carbs": 42.0,
+         "fat": 1.2,
+         "fibre": 1.5,
+         "confidence": 0.90
+       }
+     ],
+     "notes": "Short observation about the meal (e.g. 'Identified 2 items: Rice and Lentil Curry.')"
+   }
+${note ? `User context/note: ${note}` : ''}
+Reply with ONLY the JSON object.`;
+
+  try {
+    const result = await anthropicClient.askJSON({ prompt, images: [{ base64: imageBase64, mediaType: mediaType || 'image/jpeg' }], maxTokens: 1500 });
+    if (result && Array.isArray(result.items)) {
+      // Validate items structure
+      const cleanedItems = result.items
+        .filter(it => it && typeof it.name === 'string' && it.name.trim().length > 0)
+        .map(it => ({
+          name: it.name.trim(),
+          portionEstimate: it.portionEstimate || `${Math.round(it.portionGrams || 100)}g`,
+          portionGrams: Number(it.portionGrams) || 100,
+          unit: it.unit || 'g',
+          calories: Math.max(0, Math.round(Number(it.calories) || 0)),
+          protein: Math.max(0, Math.round((Number(it.protein) || 0) * 10) / 10),
+          carbs: Math.max(0, Math.round((Number(it.carbs) || 0) * 10) / 10),
+          fat: Math.max(0, Math.round((Number(it.fat) || 0) * 10) / 10),
+          fibre: Math.max(0, Math.round((Number(it.fibre || it.fiber) || 0) * 10) / 10),
+          confidence: Math.min(1, Math.max(0.1, Number(it.confidence) || 0.85))
+        }));
+
+      return {
+        items: cleanedItems,
+        notes: result.notes || (cleanedItems.length ? "AI visual meal scan complete." : "No food detected in this photo. Please point the camera directly at your meal.")
+      };
+    }
+
+    return {
+      items: [],
+      notes: "No food detected in this photo. Please point the camera directly at your food."
+    };
+  } catch (err) {
+    console.warn('AI vision scan error:', err.message);
+    if (note && note.trim()) {
+      return {
+        items: [{
+          name: note.trim().slice(0, 50),
+          portionEstimate: "1 standard serving (~200g)",
+          portionGrams: 200,
+          unit: "serving",
+          calories: 320,
+          protein: 20,
+          carbs: 38,
+          fat: 10,
+          fibre: 3,
+          confidence: 0.75
+        }],
+        notes: `Image scan failed (${err.message}). Estimated from your note: "${note.trim()}".`
+      };
+    }
+    if (err.status === 429 || (err.message && err.message.toLowerCase().includes('rate limit'))) {
+      throw new ApiError(429, 'rate_limited', 'AI vision is momentarily busy. Please wait 10-15 seconds and try again.');
+    }
+    // Return friendly error notes rather than fake food
+    return {
+      items: [],
+      notes: `Could not analyze photo (${err.message || 'connection error'}). Please try again or log manually.`
+    };
+  }
 }
 
 module.exports = { analyzeFoodPhoto };

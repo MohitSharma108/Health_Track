@@ -44,7 +44,7 @@ function callGroq({ messages, model, maxTokens = 1500, temperature = 0.2 }) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(payload),
       },
-      timeout: 30000,
+      timeout: 45000,
     }, (res) => {
       let body = '';
       res.on('data', (d) => { body += d; });
