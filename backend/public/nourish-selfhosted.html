@@ -2039,7 +2039,7 @@ function renderTopbar(){
     const hour = new Date().getHours();
     const greet = hour<12?"Good morning":(hour<17?"Good afternoon":"Good evening");
     return `<div class="topbar">
-      <div><div class="greet">${greet}, ${esc(name)}</div><div class="date">${fullDate(STATE.selectedDate)}</div></div>
+      <div><div class="greet">${greet}, ${esc(name)}</div><div class="date" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="openCalendarSheet()" title="Click to open calendar">${fullDate(STATE.selectedDate)} <span style="font-size:10px;color:var(--coral)">📅</span></div></div>
       <div style="display:flex;align-items:center;gap:8px">
         ${guestBadge}
         <button class="icon-btn" onclick="goTo('notifications')" aria-label="Notifications">${ICO.bell}${unread?'<span class="dot-badge"></span>':''}</button>
@@ -2050,7 +2050,7 @@ function renderTopbar(){
   if(["log","meals"].includes(STATE.route)){
     const title = STATE.route==="log"?"Log food":"Meal history";
     return `<div class="topbar">
-      <div><div class="greet" style="font-size:20px">${title}</div><div class="date">${fullDate(STATE.selectedDate)}</div></div>
+      <div><div class="greet" style="font-size:20px">${title}</div><div class="date" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="openCalendarSheet()" title="Click to open calendar">${fullDate(STATE.selectedDate)} <span style="font-size:10px;color:var(--coral)">📅</span></div></div>
       <div style="display:flex;align-items:center;gap:8px">
         ${guestBadge}
         <button class="icon-btn" onclick="goTo('notifications')" aria-label="Notifications">${ICO.bell}${unread?'<span class="dot-badge"></span>':''}</button>
@@ -2404,21 +2404,132 @@ function computeLoggingStreak(){
   return streak;
 }
 
+function openCalendarSheet(initialDate){
+  const target = initialDate || STATE.selectedDate || todayStr();
+  STATE._calView = target.slice(0, 7);
+  openSheet("calendar", { selectedDate: target });
+}
+
+function calStepMonth(delta){
+  let [y, m] = (STATE._calView || STATE.selectedDate.slice(0, 7)).split("-").map(Number);
+  m += delta;
+  if(m > 12){ m = 1; y++; }
+  else if(m < 1){ m = 12; y--; }
+  STATE._calView = `${y}-${String(m).padStart(2, "0")}`;
+  refreshSheet();
+}
+
+async function selectCalendarDate(dateStr){
+  if(!dateStr) return;
+  closeSheet();
+  await changeDateTo(dateStr);
+  toast(`Viewing ${prettyDate(dateStr)}`);
+}
+
+function sheetCalendarContent(props){
+  const selected = STATE.selectedDate;
+  const today = todayStr();
+  const view = STATE._calView || selected.slice(0, 7);
+  const [yearStr, monthStr] = view.split("-");
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthTitle = `${monthNames[month - 1]} ${year}`;
+
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  const totalDays = new Date(year, month, 0).getDate();
+
+  const loggedDates = new Set();
+  (STATE._allMealsCache || []).forEach(m => { if(m.date) loggedDates.add(m.date); });
+  (STATE.todaysMeals || []).forEach(m => { if(m.date) loggedDates.add(m.date); });
+
+  const weekHeaders = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  let cells = [];
+
+  for(let i = 0; i < firstDay; i++){
+    cells.push('<div class="cal-day empty" style="aspect-ratio:1;min-height:36px"></div>');
+  }
+
+  for(let d = 1; d <= totalDays; d++){
+    const dayDate = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const isSel = dayDate === selected;
+    const isTod = dayDate === today;
+    const hasLog = loggedDates.has(dayDate);
+
+    cells.push(`
+      <button type="button" class="cal-day ${isSel ? 'active' : ''} ${isTod ? 'today' : ''}" 
+        style="position:relative;border:none;background:${isSel ? 'var(--coral)' : isTod ? 'var(--coral-soft)' : 'transparent'};color:${isSel ? '#fff' : isTod ? 'var(--coral-dark)' : 'var(--ink)'};aspect-ratio:1;min-height:38px;border-radius:12px;font-weight:${isSel || isTod ? '700' : '500'};font-size:13.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .15s ease;${isTod && !isSel ? 'border:1.5px solid var(--coral);' : ''}" 
+        onclick="selectCalendarDate('${dayDate}')">
+        <span>${d}</span>
+        ${hasLog ? `<span style="width:4px;height:4px;border-radius:50%;background:${isSel ? '#fff' : 'var(--leaf)'};position:absolute;bottom:4px"></span>` : ''}
+      </button>
+    `);
+  }
+
+  return `<div class="sheet-handle"></div>
+    <div class="sheet-head" style="margin-bottom:8px">
+      <h3>Select Date</h3>
+      <button class="icon-btn" onclick="closeSheet()">${ICO.close}</button>
+    </div>
+
+    <!-- Quick Shortcuts Row -->
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:8px">
+      <button type="button" class="pill" style="cursor:pointer;font-size:12px;padding:6px 14px;background:${selected === today ? 'var(--coral)' : 'var(--card-tint)'};color:${selected === today ? '#fff' : 'var(--ink)'};font-weight:700" onclick="selectCalendarDate('${today}')">
+        📅 Today
+      </button>
+      <button type="button" class="pill" style="cursor:pointer;font-size:12px;padding:6px 14px;background:${selected === addDays(today, -1) ? 'var(--coral)' : 'var(--card-tint)'};color:${selected === addDays(today, -1) ? '#fff' : 'var(--ink)'};font-weight:700" onclick="selectCalendarDate('${addDays(today, -1)}')">
+        Yesterday
+      </button>
+      <button type="button" class="pill" style="cursor:pointer;font-size:12px;padding:6px 14px;background:${selected === addDays(today, -2) ? 'var(--coral)' : 'var(--card-tint)'};color:${selected === addDays(today, -2) ? '#fff' : 'var(--ink)'};font-weight:700" onclick="selectCalendarDate('${addDays(today, -2)}')">
+        2 Days Ago
+      </button>
+    </div>
+
+    <!-- Month Navigation Header -->
+    <div class="card" style="padding:14px;border-radius:18px;border:1px solid var(--line);background:var(--card)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button type="button" class="icon-btn" style="width:34px;height:34px" onclick="calStepMonth(-1)" aria-label="Previous Month">${ICO.back}</button>
+        <span style="font-weight:700;font-size:15px;color:var(--ink)">${monthTitle}</span>
+        <button type="button" class="icon-btn" style="width:34px;height:34px;transform:scaleX(-1)" onclick="calStepMonth(1)" aria-label="Next Month">${ICO.back}</button>
+      </div>
+
+      <!-- Days of Week -->
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;font-weight:700;color:var(--ink-faint);margin-bottom:6px">
+        ${weekHeaders.map(h => `<div>${h}</div>`).join("")}
+      </div>
+
+      <!-- Calendar Days Grid -->
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+        ${cells.join("")}
+      </div>
+    </div>
+
+    <!-- Direct Native Picker & Close Button -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);flex:1">
+        <label for="direct-date-input" style="font-weight:600;white-space:nowrap">Jump to date:</label>
+        <input type="date" id="direct-date-input" value="${selected}" onchange="selectCalendarDate(this.value)" style="border:1.5px solid var(--line);background:var(--paper);border-radius:var(--radius-pill);padding:6px 10px;font-size:13px;color:var(--ink);width:100%;max-width:160px">
+      </div>
+      <button type="button" class="btn btn-outline" style="font-size:13px;padding:8px 16px;border-radius:var(--radius-pill)" onclick="closeSheet()">Close</button>
+    </div>`;
+}
+
 function renderDateBar(){
   const isToday = STATE.selectedDate === todayStr();
   const label = prettyDate(STATE.selectedDate);
   return `<div class="date-nav-bar" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0 12px">
-    <button class="icon-btn" style="width:36px;height:36px" onclick="changeDate(-1)" aria-label="Previous Day">${ICO.back}</button>
+    <button class="icon-btn" style="width:36px;height:36px" onclick="changeDate(-1)" aria-label="Previous Day" title="Previous Day">${ICO.back}</button>
     <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:center">
-      <label style="cursor:pointer;position:relative;display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px;background:var(--card);border:1px solid var(--line);padding:7px 14px;border-radius:var(--radius-pill);box-shadow:var(--shadow-sm)">
-        <span style="color:var(--coral)">${ICO.calendar}</span>
+      <button type="button" class="btn" style="cursor:pointer;position:relative;display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px;background:var(--card);border:1px solid var(--line);padding:7px 14px;border-radius:var(--radius-pill);box-shadow:var(--shadow-sm);color:var(--ink);transition:all .15s ease" onclick="openCalendarSheet()" aria-label="Open Calendar">
+        <span style="color:var(--coral);display:flex;align-items:center">${ICO.calendar}</span>
         <span>${esc(label)}</span>
         <span class="muted small" style="font-size:11.5px;font-weight:500">(${STATE.selectedDate})</span>
-        <input type="date" value="${STATE.selectedDate}" onchange="changeDateTo(this.value)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
-      </label>
+        <span style="font-size:9px;color:var(--ink-faint);margin-left:2px">▼</span>
+      </button>
       ${!isToday ? `<button class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:11.5px;height:32px" onclick="changeDateTo(todayStr())">Today</button>` : ''}
     </div>
-    <button class="icon-btn" style="width:36px;height:36px;transform:scaleX(-1)" onclick="changeDate(1)" aria-label="Next Day">${ICO.back}</button>
+    <button class="icon-btn" style="width:36px;height:36px;transform:scaleX(-1)" onclick="changeDate(1)" aria-label="Next Day" title="Next Day">${ICO.back}</button>
   </div>`;
 }
 
@@ -4851,9 +4962,12 @@ function renderMealsHistory(){
         <div class="card tight" style="margin-bottom:12px;background:var(--card)">
           <div class="row" style="gap:8px;align-items:center">
             <button class="icon-btn" onclick="STATE.selectedDate=addDays(STATE.selectedDate,-1); loadMealsForDate(STATE.selectedDate).then(render)" title="Previous day">${ICO.back}</button>
-            <div style="flex:1;text-align:center">
-              <input type="date" value="${STATE.selectedDate}" style="border:none;background:transparent;font-weight:700;font-size:15px;color:var(--ink);cursor:pointer;text-align:center" onchange="STATE.selectedDate=this.value; loadMealsForDate(STATE.selectedDate).then(render)">
-              <div class="muted small" style="font-size:12px">${prettyDate(STATE.selectedDate)}${isToday ? ' (Today)' : ''}</div>
+            <div style="flex:1;text-align:center;cursor:pointer" onclick="openCalendarSheet()" title="Open calendar">
+              <div style="font-weight:700;font-size:15px;color:var(--ink);display:inline-flex;align-items:center;gap:4px">
+                <span>${prettyDate(STATE.selectedDate)}</span>
+                <span style="color:var(--coral);font-size:13px">📅</span>
+              </div>
+              <div class="muted small" style="font-size:12px">${STATE.selectedDate}${isToday ? ' (Today)' : ''}</div>
             </div>
             <button class="icon-btn" onclick="STATE.selectedDate=addDays(STATE.selectedDate,1); loadMealsForDate(STATE.selectedDate).then(render)" style="transform:scaleX(-1)" title="Next day">${ICO.back}</button>
           </div>
@@ -7226,6 +7340,7 @@ function renderSheetContent(){
     importRecipe: sheetImportRecipeContent,
     quickAdd: sheetQuickAddContent,
     shareCard: sheetShareCardContent,
+    calendar: sheetCalendarContent,
   };
   const fn = fns[sh.type];
   return fn ? fn(sh.props) : "";
