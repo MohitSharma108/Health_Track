@@ -396,6 +396,7 @@ router.post(
   '/assistant',
   validate({
     body: z.object({
+      message: z.string().optional(),
       history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(2000) })).min(1).max(20),
       appData: z.any().optional(),
     }),
@@ -434,7 +435,7 @@ router.post(
     }
     const text = await assistantService.ask({ history: req.body.history, appData });
     await logAiRecommendation(req.userId, 'assistant', { lastMessage: req.body.history[req.body.history.length - 1] }, { text });
-    res.json({ text });
+    res.json({ text, reply: text, message: text });
   })
 );
 

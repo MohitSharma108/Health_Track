@@ -1,5 +1,11 @@
 'use strict';
 const { askChat, MEDICAL_GUARDRAIL } = require('./anthropicClient');
+const {
+  validateHealthQuery,
+  validateHealthResponse,
+  HARDENED_ASSISTANT_SYSTEM_PROMPT,
+  STANDARD_REFUSAL,
+} = require('./assistantGuardrail');
 
 /**
  * The assistant is stateless server-side: the client sends its own short
@@ -9,6 +15,15 @@ const { askChat, MEDICAL_GUARDRAIL } = require('./anthropicClient');
  * ending on the newest user message.
  */
 async function ask({ history, appData }) {
+  const lastUserMsg = (history || []).filter((h) => h.role === 'user').slice(-1)[0];
+  const userQuery = (lastUserMsg && lastUserMsg.content) || '';
+
+  // Layer 1: Deterministic Health & Anti-Jailbreak Pre-Filter (zero latency, zero tokens)
+  const queryCheck = validateHealthQuery(userQuery);
+  if (!queryCheck.allowed) {
+    return queryCheck.refusal || STANDARD_REFUSAL;
+  }
+
   const today = (appData && appData.today) || {};
   const consumed = today.consumed || { calories: 0, protein: 0, carbs: 0, fat: 0, fibre: 0 };
   const targets = today.targets || { calories: 2000, protein: 120, carbs: 220, fat: 65 };
@@ -21,7 +36,9 @@ async function ask({ history, appData }) {
   const meals = today.meals || [];
   const profile = (appData && appData.profile) || {};
 
-  const contextTurn = `${MEDICAL_GUARDRAIL}
+  const contextTurn = `${HARDENED_ASSISTANT_SYSTEM_PROMPT}
+
+${MEDICAL_GUARDRAIL}
 You are Nourish's expert AI Nutritionist, Dietary Coach, and Health Advisor.
 Your personality is encouraging, scientifically grounded, empathetic, and highly actionable.
 
@@ -46,11 +63,14 @@ RESPONSE FORMATTING & STYLE:
 
   const messages = [
     { role: 'user', content: contextTurn },
-    { role: 'assistant', content: "Understood! I'm ready to provide clear, motivating, and highly practical nutrition coaching tailored to your day and goals." },
+    { role: 'assistant', content: "Understood! I am strictly dedicated to nutrition, fitness, diet, and wellness coaching. I am ready to assist with your health and goals." },
     ...(history || []).map((h) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })),
   ];
   try {
-    return await askChat({ messages, maxTokens: 1200 });
+    const rawText = await askChat({ messages, maxTokens: 1200 });
+    // Layer 3: Post-Generation Response Guardrail
+    const validated = validateHealthResponse(rawText);
+    return validated.cleanText;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('Backend askChat failed, generating intelligent grounded response:', err.message);
@@ -60,7 +80,15 @@ RESPONSE FORMATTING & STYLE:
 
 function generateGroundedCoachReply(history, appData) {
   const lastUserMsg = (history || []).filter((h) => h.role === 'user').slice(-1)[0];
-  const q = ((lastUserMsg && lastUserMsg.content) || '').toLowerCase().trim();
+  const userQuery = (lastUserMsg && lastUserMsg.content) || '';
+  const check = validateHealthQuery(userQuery);
+  if (!check.allowed) {
+    return check.refusal || STANDARD_REFUSAL;
+  }
+  if (check.reason === 'greeting') {
+    return `👋 **Hello! I'm your Nourish AI Nutrition & Health Coach.**\n\nI'm here to help you hit your nutrition, calorie, macro, and wellness goals.\n\nHere are a few things you can ask me:\n• **"What did I eat today?"** for your daily logged intake\n• **"How much protein do I have left?"** for remaining targets & food ideas\n• **"What should I eat for dinner?"** for high-protein, calorie-matched meals\n• **"How many calories in a banana?"** or any food nutrition breakdown!\n\nHow can I help you with your nutrition today?`;
+  }
+  const q = userQuery.toLowerCase().trim();
 
   const today = (appData && appData.today) || {};
   const consumed = today.consumed || { calories: 0, protein: 0, carbs: 0, fat: 0 };

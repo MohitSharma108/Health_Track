@@ -122,7 +122,7 @@ export default function AiPage() {
         message: userMsg,
         history: newHistory,
       })
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: res.reply || res.message }])
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: res.reply || res.message || res.text }])
     } catch (e) {
       toast(e.message, 'error')
     }
