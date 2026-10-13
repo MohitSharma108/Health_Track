@@ -105,16 +105,10 @@ const user = {
     db.users.push(newUser);
 
     if (data.profile && data.profile.create) {
-      db.profiles.push({
+      db.profiles.push(fillProfileDefaults({
         userId: id,
         name: data.profile.create.name || 'User',
-        goal: 'maintain',
-        diet: 'balanced',
-        aiEnabled: true,
-        waterGoalMl: 2000,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+      }));
     }
 
     db.nutritionGoals.push({
@@ -169,11 +163,42 @@ const user = {
   },
 };
 
+function fillProfileDefaults(p) {
+  if (!p) return null;
+  return {
+    userId: p.userId,
+    name: p.name || 'You',
+    age: p.age !== undefined && p.age !== null ? p.age : 25,
+    gender: p.gender || 'other',
+    heightCm: p.heightCm !== undefined && p.heightCm !== null ? p.heightCm : 170,
+    weightKg: p.weightKg !== undefined && p.weightKg !== null ? p.weightKg : 70,
+    startWeightKg: p.startWeightKg !== undefined && p.startWeightKg !== null ? p.startWeightKg : (p.weightKg || 70),
+    goalWeightKg: p.goalWeightKg !== undefined && p.goalWeightKg !== null ? p.goalWeightKg : (p.weightKg || 70),
+    activityLevel: p.activityLevel || 'light',
+    goal: p.goal || 'maintain',
+    diet: p.diet || 'Non-vegetarian',
+    allergies: Array.isArray(p.allergies) ? p.allergies : [],
+    dislikes: p.dislikes || '',
+    restrictions: p.restrictions || '',
+    budget: p.budget || 'moderate',
+    cuisine: p.cuisine || 'No preference',
+    mealsPerDay: p.mealsPerDay || 4,
+    units: p.units || 'metric',
+    reportTime: p.reportTime || '20:00',
+    appearance: p.appearance || 'system',
+    aiEnabled: p.aiEnabled !== false,
+    waterGoalMl: p.waterGoalMl || 2000,
+    createdAt: p.createdAt || new Date().toISOString(),
+    updatedAt: p.updatedAt || new Date().toISOString(),
+  };
+}
+
 // Profile Model
 const profile = {
   async findUnique({ where }) {
     const db = loadDb();
-    return db.profiles.find(p => p.userId === where.userId) || null;
+    const p = db.profiles.find(x => x.userId === where.userId);
+    return p ? fillProfileDefaults(p) : null;
   },
   async upsert({ where, update, create }) {
     const db = loadDb();
@@ -181,21 +206,17 @@ const profile = {
     if (p) {
       Object.assign(p, update, { updatedAt: new Date().toISOString() });
     } else {
-      p = {
+      p = fillProfileDefaults({
         userId: where.userId,
         name: create.name || 'User',
-        goal: 'maintain',
-        diet: 'balanced',
-        aiEnabled: true,
-        waterGoalMl: 2000,
         ...create,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
+      });
       db.profiles.push(p);
     }
     saveDb(db);
-    return p;
+    return fillProfileDefaults(p);
   },
   async update({ where, data }) {
     const db = loadDb();
@@ -203,7 +224,7 @@ const profile = {
     if (p) {
       Object.assign(p, data, { updatedAt: new Date().toISOString() });
       saveDb(db);
-      return p;
+      return fillProfileDefaults(p);
     }
     return this.upsert({ where, update: data, create: { userId: where.userId, ...data } });
   },

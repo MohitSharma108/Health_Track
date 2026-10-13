@@ -83,15 +83,21 @@ a{ color:inherit; }
 ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:8px; }
 
 #app{ max-width:480px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:calc(var(--nav-h) + 18px); }
-.screen{ padding:0 16px 8px; animation:fadeIn .22s ease; }
-@keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+.screen{ padding:0 16px 8px; animation:fadeIn .15s ease-out; }
+@keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
 
 /* Topbar */
-.topbar{ padding:18px 16px 10px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.topbar{ padding:18px 16px 10px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; z-index:30; }
 .topbar .greet{ font-family:var(--font-display); font-size:22px; font-weight:600; line-height:1.15; }
 .topbar .date{ font-size:13px; color:var(--ink-faint); margin-top:2px; }
-.avatar{ width:38px; height:38px; border-radius:50%; background:var(--coral); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex:none; cursor:pointer; border:none; }
-.icon-btn{ width:38px; height:38px; border-radius:50%; background:var(--card); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink); flex:none; position:relative;}
+.avatar{ width:38px; height:38px; border-radius:50%; background:var(--coral); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex:none; cursor:pointer; border:none; user-select:none; -webkit-user-select:none; transition:transform .12s ease, opacity .12s ease, box-shadow .12s ease; position:relative; z-index:30; pointer-events:auto; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.avatar:active{ transform:scale(0.92); }
+.avatar:hover{ box-shadow:0 2px 10px rgba(235,94,85,0.35); }
+.eat-now-banner{ transition:transform .12s ease, border-color .15s ease, box-shadow .15s ease; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+.eat-now-banner:hover{ border-color:var(--coral-dark) !important; box-shadow:0 4px 16px rgba(235,94,85,0.18) !important; }
+.eat-now-banner:active{ transform:scale(0.985); }
+.icon-btn{ width:38px; height:38px; border-radius:50%; background:var(--card); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink); flex:none; position:relative; user-select:none; -webkit-user-select:none; transition:transform .12s ease, opacity .12s ease;}
+.icon-btn:active{ transform:scale(0.94); }
 .icon-btn svg{ width:18px !important; height:18px !important; flex:0 0 18px !important; }
 .dot-badge{ position:absolute; top:6px; right:6px; width:8px; height:8px; border-radius:50%; background:var(--coral); border:1.5px solid var(--card); }
 
@@ -607,6 +613,8 @@ input:focus-visible, button:focus-visible, .choice:focus-visible, .chip:focus-vi
     padding:22px 28px 18px;
     border-bottom:1px solid var(--line);
     margin-bottom:14px;
+    position:relative;
+    z-index:30;
   }
   .screen{
     padding:0 28px 24px;
@@ -1420,17 +1428,42 @@ function saveLocalFallback(){
   catch(e){ console.warn("localStorage write failed (storage full or unavailable)", e); }
 }
 
+function normalizeProfile(p){
+  if(!p) return null;
+  const prof = Object.assign({}, p);
+  prof.name = prof.name ? String(prof.name).trim() : "Member";
+  prof.age = (prof.age !== null && prof.age !== undefined && !isNaN(prof.age)) ? Number(prof.age) : 25;
+  prof.gender = prof.gender || "other";
+  prof.heightCm = (prof.heightCm !== null && prof.heightCm !== undefined && !isNaN(prof.heightCm)) ? Number(prof.heightCm) : 170;
+  prof.weightKg = (prof.weightKg !== null && prof.weightKg !== undefined && !isNaN(prof.weightKg)) ? Number(prof.weightKg) : 70;
+  prof.startWeightKg = (prof.startWeightKg !== null && prof.startWeightKg !== undefined && !isNaN(prof.startWeightKg)) ? Number(prof.startWeightKg) : (prof.weightKg || 70);
+  prof.goalWeightKg = (prof.goalWeightKg !== null && prof.goalWeightKg !== undefined && !isNaN(prof.goalWeightKg)) ? Number(prof.goalWeightKg) : (prof.weightKg || 70);
+  prof.activityLevel = prof.activityLevel || "light";
+  prof.goal = prof.goal || "maintain";
+  prof.diet = prof.diet || "Non-vegetarian";
+  prof.allergies = Array.isArray(prof.allergies) ? prof.allergies : [];
+  prof.dislikes = prof.dislikes || "";
+  prof.restrictions = prof.restrictions || "";
+  prof.budget = prof.budget || "moderate";
+  prof.cuisine = prof.cuisine || "No preference";
+  prof.mealsPerDay = Number(prof.mealsPerDay) || 4;
+  prof.units = prof.units || "metric";
+  const defTargets = { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 30 };
+  prof.targets = Object.assign(defTargets, prof.targets || {});
+  return prof;
+}
+
 const StorageService = {
   async getDoc(path){
     if(!getAuthToken()){
-      return LocalFallback.store[path] || null;
+      return path === "profile/main" ? normalizeProfile(LocalFallback.store[path] || null) : (LocalFallback.store[path] || null);
     }
     try{
       if(path==="profile/main"){
         const {profile, goals} = await apiGet("/profile");
-        if(!profile) return LocalFallback.store[path] || null;
+        if(!profile) return normalizeProfile(LocalFallback.store[path] || null);
         const tg = goals ? {calories:goals.calories, protein:goals.proteinG, carbs:goals.carbsG, fat:goals.fatG, fibre:goals.fibreG} : ((LocalFallback.store[path] && LocalFallback.store[path].targets) || {calories:2000, protein:120, carbs:220, fat:65, fibre:30});
-        const res = Object.assign({}, profile, {targets: tg});
+        const res = normalizeProfile(Object.assign({}, profile, {targets: tg}));
         LocalFallback.store[path] = res; saveLocalFallback();
         return res;
       }
@@ -1971,17 +2004,23 @@ const NotificationService = {
   async push(type, title, body){ toast(title); },
   async markRead(id){
     try{ await apiPost(`/notifications/${id}/read`); }catch(e){ console.warn(e); }
-    const n = STATE.notifications.find(x=>x.id===id); if(n) n.read=true;
+    if(Array.isArray(STATE.notifications)){
+      const n = STATE.notifications.find(x=>x && x.id===id); if(n) n.read=true;
+    }
     render();
   },
   async markAllRead(){
     try{ await apiPost("/notifications/read-all"); }catch(e){ console.warn(e); }
-    STATE.notifications.forEach(n=>n.read=true);
+    if(Array.isArray(STATE.notifications)){
+      STATE.notifications.forEach(n=>{ if(n) n.read=true; });
+    }
     render();
   },
   async remove(id){
-    await StorageService.deleteFromCollection("notifications", id);
-    STATE.notifications = STATE.notifications.filter(n=>n.id!==id);
+    try{ await StorageService.deleteFromCollection("notifications", id); }catch(e){ console.warn(e); }
+    if(Array.isArray(STATE.notifications)){
+      STATE.notifications = STATE.notifications.filter(n=>n && n.id!==id);
+    }
     render();
   }
 };
@@ -2184,7 +2223,12 @@ const SECONDARY_TITLES = {assistant:"AI Assistant", analytics:"Analytics", recip
 
 function goTo(route, opts){
   if(STATE.route === 'scan' && route !== 'scan') { stopLiveCamera(); STATE.cameraActive = false; }
-  STATE.route = route; STATE.sheet=null; STATE.routeOpts=opts||{}; window.scrollTo(0,0); render();
+  const prevRoute = STATE.route;
+  STATE.route = route;
+  STATE.sheet = null;
+  STATE.routeOpts = Object.assign({ back: prevRoute && prevRoute !== route ? prevRoute : 'home' }, opts || {});
+  if(prevRoute !== route) window.scrollTo(0, 0);
+  render();
 }
 
 function renderTabbar(){
@@ -2200,7 +2244,8 @@ function renderTabbar(){
 }
 
 function renderTopbar(){
-  const unread = STATE.notifications.filter(n=>!n.read).length;
+  const notifs = Array.isArray(STATE.notifications) ? STATE.notifications : [];
+  const unread = notifs.filter(n=>n && !n.read).length;
   const isGuest = isGuestUser();
   const trialDays = getTrialDaysUsed() + 1;
   const guestBadge = isGuest ? `
@@ -2218,8 +2263,8 @@ function renderTopbar(){
       <div><div class="greet">${greet}, ${esc(name)}</div><div class="date" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="openCalendarSheet()" title="Click to open calendar">${fullDate(STATE.selectedDate)} <span style="font-size:10px;color:var(--coral)">📅</span></div></div>
       <div style="display:flex;align-items:center;gap:8px">
         ${guestBadge}
-        <button class="icon-btn" onclick="goTo('notifications')" aria-label="Notifications">${ICO.bell}${unread?'<span class="dot-badge"></span>':''}</button>
-        <button class="avatar" onclick="goTo('profile')" aria-label="Profile">${esc(((STATE.profile&&STATE.profile.name)||"?").slice(0,1).toUpperCase())}</button>
+        <button class="icon-btn" onclick="goTo('notifications', {back:'home'})" aria-label="Notifications">${ICO.bell}${unread?'<span class="dot-badge"></span>':''}</button>
+        <button class="avatar" onclick="openProfileSheet()" aria-label="Profile" title="Profile & Account options">${esc(((STATE.profile&&STATE.profile.name)||"?").slice(0,1).toUpperCase())}</button>
       </div>
     </div>`;
   }
@@ -2229,7 +2274,8 @@ function renderTopbar(){
       <div><div class="greet" style="font-size:20px">${title}</div><div class="date" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="openCalendarSheet()" title="Click to open calendar">${fullDate(STATE.selectedDate)} <span style="font-size:10px;color:var(--coral)">📅</span></div></div>
       <div style="display:flex;align-items:center;gap:8px">
         ${guestBadge}
-        <button class="icon-btn" onclick="goTo('notifications')" aria-label="Notifications">${ICO.bell}${unread?'<span class="dot-badge"></span>':''}</button>
+        <button class="icon-btn" onclick="goTo('notifications', {back:STATE.route})" aria-label="Notifications">${ICO.bell}${unread?'<span class="dot-badge"></span>':''}</button>
+        <button class="avatar" onclick="openProfileSheet()" aria-label="Profile" title="Profile & Account options">${esc(((STATE.profile&&STATE.profile.name)||"?").slice(0,1).toUpperCase())}</button>
       </div>
     </div>`;
   }
@@ -2242,7 +2288,7 @@ function renderTopbar(){
   }
   const title = SECONDARY_TITLES[STATE.route] || "";
   return `<div class="topbar">
-    <button class="icon-btn" onclick="goTo(STATE.routeOpts&&STATE.routeOpts.back || 'more')" aria-label="Back">${ICO.back}</button>
+    <button class="icon-btn" onclick="goTo(STATE.routeOpts&&STATE.routeOpts.back || 'home')" aria-label="Back">${ICO.back}</button>
     <div class="greet" style="font-size:19px;flex:1;text-align:center">${title}</div>
     <div style="display:flex;align-items:center">${guestBadge}</div>
   </div>`;
@@ -2304,7 +2350,21 @@ function render(){
     afterRenderOnboarding();
     return;
   }
-  let html = renderTopbar() + renderRoute();
+  let routeHtml = "";
+  try {
+    routeHtml = renderRoute();
+  } catch(err) {
+    console.error("renderRoute failed for route:", STATE.route, err);
+    routeHtml = `<div class="screen screen-narrow" style="padding-top:30px;text-align:center">
+      <div class="card tight">
+        <div style="font-size:36px;margin-bottom:10px">⚠️</div>
+        <h3>Unable to load ${esc(SECONDARY_TITLES[STATE.route] || STATE.route)}</h3>
+        <p class="muted small" style="margin-bottom:16px">${esc(err.message || 'An unexpected error occurred.')}</p>
+        <button class="btn btn-primary btn-block" onclick="goTo('home')">Return to Home</button>
+      </div>
+    </div>`;
+  }
+  let html = renderTopbar() + routeHtml;
   app.innerHTML = html;
   if(STATE.route!=="onboarding"){
     const tb = document.createElement("div"); tb.innerHTML = renderTabbar();
@@ -2789,13 +2849,20 @@ async function copyYesterdayMealType(mealType){
 }
 
 function renderHome(){
-  const p = STATE.profile, t = p.targets;
-  const totals = dayTotals(STATE.todaysMeals);
+  const p = normalizeProfile(STATE.profile) || {
+    name: "Member", age: 25, heightCm: 170, weightKg: 70, startWeightKg: 70, goalWeightKg: 70,
+    targets: { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 30 }
+  };
+  STATE.profile = p;
+  const t = p.targets;
+  const totals = dayTotals(STATE.todaysMeals || []);
   const calPct = t.calories ? clamp(totals.cal/t.calories,0,1) : 0;
   const remaining = Math.max(0, Math.round(t.calories-totals.cal));
   const water = STATE.todaysWaterMl||0, waterGoal = (STATE.settings&&STATE.settings.waterGoalMl)||2000;
-  const latestWeight = STATE.weightLogs.length? STATE.weightLogs[STATE.weightLogs.length-1].weight : p.weightKg;
-  const weightChange = round1(latestWeight - p.startWeightKg);
+  const logs = Array.isArray(STATE.weightLogs) ? STATE.weightLogs : [];
+  const latestWeight = logs.length ? logs[logs.length-1].weight : (p.weightKg ?? 70);
+  const startWeight = (p.startWeightKg !== null && p.startWeightKg !== undefined) ? p.startWeightKg : (p.weightKg ?? 70);
+  const weightChange = round1(latestWeight - startWeight);
 
   return `<div class="screen">
     ${STATE.canInstallPWA ? `
@@ -2869,9 +2936,10 @@ function renderHome(){
       </div>
 
       <div class="home-col-right">
-        <button class="card" style="width:100%;text-align:left;display:flex;align-items:center;gap:14px;cursor:pointer;border-color:var(--coral);margin-bottom:12px" onclick="openWhatToEat()">
-          <div style="width:42px;height:42px;border-radius:50%;background:var(--coral-soft);display:flex;align-items:center;justify-content:center;color:var(--coral-dark);flex:none">${ICO.sparkle}</div>
-          <div><div style="font-weight:800;font-size:15px">What should I eat now?</div><div class="muted small">AI picks options that fit your remaining macros</div></div>
+        <button type="button" class="card eat-now-banner" id="eatNowBannerBtn" style="width:100%;text-align:left;display:flex;align-items:center;gap:14px;cursor:pointer;border-color:var(--coral);margin-bottom:12px;position:relative;z-index:15;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent" onclick="openWhatToEat()" aria-label="What should I eat now?">
+          <div style="pointer-events:none;width:42px;height:42px;border-radius:50%;background:var(--coral-soft);display:flex;align-items:center;justify-content:center;color:var(--coral-dark);flex:none">${ICO.sparkle}</div>
+          <div style="pointer-events:none;flex:1"><div style="font-weight:800;font-size:15px;color:var(--ink)">What should I eat now?</div><div class="muted small">AI picks options that fit your remaining macros</div></div>
+          <div style="pointer-events:none;color:var(--coral);font-size:20px;font-weight:700;padding-right:4px">›</div>
         </button>
 
         <div class="section-label" style="display:flex;justify-content:space-between;align-items:center;margin-top:0">
@@ -5393,22 +5461,27 @@ async function deleteRecipe(recipeId){
    WEIGHT TRACKING
    ============================================================ */
 function renderWeight(){
-  const p = STATE.profile; const logs = STATE.weightLogs;
-  const latest = logs.length? logs[logs.length-1].weight : p.weightKg;
+  const p = normalizeProfile(STATE.profile) || {};
+  const logs = Array.isArray(STATE.weightLogs) ? STATE.weightLogs : [];
+  const currentWeight = (p.weightKg !== null && p.weightKg !== undefined && !isNaN(p.weightKg)) ? Number(p.weightKg) : 70;
+  const startWeight = (p.startWeightKg !== null && p.startWeightKg !== undefined && !isNaN(p.startWeightKg)) ? Number(p.startWeightKg) : currentWeight;
+  const goalWeight = (p.goalWeightKg !== null && p.goalWeightKg !== undefined && !isNaN(p.goalWeightKg)) ? Number(p.goalWeightKg) : currentWeight;
+  const latest = logs.length ? logs[logs.length-1].weight : currentWeight;
+  const weightDiff = round1(latest - startWeight);
   const range = STATE._weightRange||"30d";
   const days = {"7d":7,"30d":30,"90d":90,"all":100000}[range];
   const cutoff = addDays(todayStr(), -days);
-  const filtered = logs.filter(l=>l.date>=cutoff);
+  const filtered = logs.filter(l=>l && l.date && l.date>=cutoff);
   const points = filtered.map(l=>({x:l.date, y:l.weight, label:new Date(l.date+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}));
   return `<div class="screen screen-narrow">
     <div class="card">
       <div class="choice-grid" style="grid-template-columns:1fr 1fr 1fr">
-        <div style="text-align:center"><div style="font-weight:800;font-size:18px">${round1(p.startWeightKg)}</div><div class="muted small">start</div></div>
+        <div style="text-align:center"><div style="font-weight:800;font-size:18px">${round1(startWeight)}</div><div class="muted small">start</div></div>
         <div style="text-align:center"><div style="font-weight:800;font-size:18px;color:var(--coral)">${round1(latest)}</div><div class="muted small">current</div></div>
-        <div style="text-align:center"><div style="font-weight:800;font-size:18px">${round1(p.goalWeightKg)}</div><div class="muted small">goal</div></div>
+        <div style="text-align:center"><div style="font-weight:800;font-size:18px">${round1(goalWeight)}</div><div class="muted small">goal</div></div>
       </div>
       <div class="divider"></div>
-      <div class="row"><span class="small muted">Change since start</span><b class="small" style="color:${latest-p.startWeightKg<=0?'var(--leaf)':'var(--amber)'}">${latest-p.startWeightKg>=0?'+':''}${round1(latest-p.startWeightKg)} kg</b></div>
+      <div class="row"><span class="small muted">Change since start</span><b class="small" style="color:${weightDiff<=0?'var(--leaf)':'var(--amber)'}">${weightDiff>=0?'+':''}${weightDiff} kg</b></div>
     </div>
     <div class="card">
       <div class="segmented" style="margin-bottom:10px">${["7d","30d","90d","all"].map(r=>`<button class="${range===r?'active':''}" onclick="STATE._weightRange='${r}'; render()">${r==='all'?'All':r}</button>`).join("")}</div>
@@ -6005,16 +6078,17 @@ function scrollChatBottom(){
    NOTIFICATIONS CENTER
    ============================================================ */
 function renderNotifications(){
-  const unread = STATE.notifications.filter(n=>!n.read).length;
+  const notifs = Array.isArray(STATE.notifications) ? STATE.notifications : [];
+  const unread = notifs.filter(n=>n && !n.read).length;
   return `<div class="screen screen-narrow">
     <div class="row" style="margin-bottom:10px">
       <span class="muted small">${unread} unread</span>
       ${unread>0?`<button class="link-btn" onclick="NotificationService.markAllRead()">Mark all read</button>`:""}
     </div>
-    ${STATE.notifications.length? STATE.notifications.map(n=>`
+    ${notifs.length? notifs.map(n=>`
       <div class="card tight" style="${n.read?'':'border-color:var(--coral)'};display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="NotificationService.markRead('${n.id}')">
         <div style="width:36px;height:36px;border-radius:50%;background:var(--card-tint);display:flex;align-items:center;justify-content:center;flex:none">${notifIcon(n.type)}</div>
-        <div style="flex:1"><div style="font-weight:700;font-size:13.5px">${esc(n.title)}</div><div class="muted small" style="margin-top:2px">${esc(n.body)}</div><div class="muted small" style="margin-top:4px;font-size:11px">${new Date(n.createdAt).toLocaleString()}</div></div>
+        <div style="flex:1"><div style="font-weight:700;font-size:13.5px">${esc(n.title||'')}</div><div class="muted small" style="margin-top:2px">${esc(n.body||'')}</div><div class="muted small" style="margin-top:4px;font-size:11px">${n.createdAt ? new Date(n.createdAt).toLocaleString() : ''}</div></div>
         <button class="icon-btn" style="width:28px;height:28px" onclick="event.stopPropagation(); NotificationService.remove('${n.id}')">${ICO.close}</button>
       </div>`).join("") : `<div class="empty-state"><div class="icon">🔔</div><h4>All caught up</h4><p class="small">You'll see meal reminders, goal milestones and reports here.</p></div>`}
   </div>`;
@@ -6024,18 +6098,18 @@ function notifIcon(type){ return {welcome:"🎉",goalProgress:"🎯",dailyReport
    FAVOURITES
    ============================================================ */
 function renderFavorites(){
-  const foods = STATE.favorites.filter(f=>f.type==="food");
-  const meals = STATE.favorites.filter(f=>f.type==="meal");
-  const products = STATE.customFoods.filter(f=>f.isProduct);
+  const foods = (STATE.favorites||[]).filter(f=>f&&f.type==="food");
+  const meals = (STATE.favorites||[]).filter(f=>f&&f.type==="meal");
+  const products = (STATE.customFoods||[]).filter(f=>f&&f.isProduct);
   return `<div class="screen screen-narrow">
     <div class="section-label">Favourite foods</div>
-    ${foods.length? `<div class="card tight">${foods.map(f=>`<div class="list-item"><div class="thumb">🍽️</div><div style="flex:1"><div class="item-title">${esc(f.name)}</div></div><button class="icon-btn" style="width:30px;height:30px" onclick="removeFavorite('${f.id}')">${ICO.close}</button></div>`).join("")}</div>` : `<div class="empty-state small">No favourite foods yet</div>`}
+    ${foods.length? `<div class="card tight">${foods.map(f=>`<div class="list-item"><div class="thumb">🍽️</div><div style="flex:1"><div class="item-title">${esc(f.name||'')}</div></div><button class="icon-btn" style="width:30px;height:30px" onclick="removeFavorite('${f.id}')">${ICO.close}</button></div>`).join("")}</div>` : `<div class="empty-state small">No favourite foods yet</div>`}
     <div class="section-label">Favourite meals</div>
-    ${meals.length? `<div class="card tight">${meals.map(f=>`<div class="list-item" style="cursor:pointer" onclick="repeatSavedMeal('${f.id}')"><div class="thumb">${MEAL_ICON[f.mealType]||"🍽️"}</div><div style="flex:1"><div class="item-title">${esc(f.name)}</div></div><button class="icon-btn" style="width:30px;height:30px" onclick="event.stopPropagation(); removeFavorite('${f.id}')">${ICO.close}</button></div>`).join("")}</div>` : `<div class="empty-state small">No favourite meals yet</div>`}
+    ${meals.length? `<div class="card tight">${meals.map(f=>`<div class="list-item" style="cursor:pointer" onclick="repeatSavedMeal('${f.id}')"><div class="thumb">${MEAL_ICON[f.mealType]||"🍽️"}</div><div style="flex:1"><div class="item-title">${esc(f.name||'')}</div></div><button class="icon-btn" style="width:30px;height:30px" onclick="event.stopPropagation(); removeFavorite('${f.id}')">${ICO.close}</button></div>`).join("")}</div>` : `<div class="empty-state small">No favourite meals yet</div>`}
     <div class="section-label">Saved recipes</div>
-    ${STATE.recipes.length? STATE.recipes.map(r=>renderRecipeCard(r)).join("") : `<div class="empty-state small">No recipes yet</div>`}
+    ${(STATE.recipes||[]).length? STATE.recipes.map(r=>renderRecipeCard(r)).join("") : `<div class="empty-state small">No recipes yet</div>`}
     <div class="section-label">My Products (from label scans)</div>
-    ${products.length? `<div class="card tight">${products.map(f=>`<div class="list-item" style="cursor:pointer" onclick="openAddFoodSheet('${f.id}')"><div class="thumb">🏷️</div><div style="flex:1"><div class="item-title">${esc(f.name)}</div><div class="item-sub">${f.serving.label}</div></div></div>`).join("")}</div>` : `<div class="empty-state small">No scanned products yet</div>`}
+    ${products.length? `<div class="card tight">${products.map(f=>`<div class="list-item" style="cursor:pointer" onclick="openAddFoodSheet('${f.id}')"><div class="thumb">🏷️</div><div style="flex:1"><div class="item-title">${esc(f.name||'')}</div><div class="item-sub">${f.serving&&f.serving.label||''}</div></div></div>`).join("")}</div>` : `<div class="empty-state small">No scanned products yet</div>`}
   </div>`;
 }
 async function removeFavorite(favId){ await StorageService.deleteFromCollection("favorites", favId); await loadFavorites(); render(); }
@@ -6044,17 +6118,40 @@ async function removeFavorite(favId){ await StorageService.deleteFromCollection(
    PROFILE EDIT
    ============================================================ */
 function renderProfileEdit(){
-  const p = STATE.profile;
+  const p = normalizeProfile(STATE.profile) || {
+    name:"Member", age:25, gender:"other", heightCm:170, weightKg:70, startWeightKg:70, goalWeightKg:70,
+    activityLevel:"light", goal:"maintain", diet:"Non-vegetarian", allergies:[], dislikes:"", restrictions:"",
+    budget:"moderate", cuisine:"No preference", mealsPerDay:4, units:"metric",
+    targets:{calories:2000, protein:120, carbs:220, fat:65, fibre:30}
+  };
+  STATE.profile = p;
+  const isGuest = isGuestUser();
+  const allergies = Array.isArray(p.allergies) ? p.allergies : [];
+  const targets = p.targets || {calories:2000, protein:120, carbs:220, fat:65, fibre:30};
+
   return `<div class="screen screen-narrow">
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="avatar" style="width:44px;height:44px;font-size:18px">${esc((p.name||"?").slice(0,1).toUpperCase())}</div>
+        <div>
+          <div style="font-weight:700;font-size:15px">${esc(p.name||"Member")}</div>
+          <div class="muted small">${isGuest ? "Guest Mode (Local)" : "Logged In Account"}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="goTo('settings')">Settings</button>
+        ${!isGuest ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="logOut()">Log out</button>` : `<button class="btn btn-primary btn-sm" onclick="openAuthModal()">Sign up</button>`}
+      </div>
+    </div>
     <div class="card">
       <h3>About you</h3>
-      <div class="field"><label>Name</label><input type="text" value="${esc(p.name)}" onchange="updateProfileField('name',this.value)"></div>
+      <div class="field"><label>Name</label><input type="text" value="${esc(p.name||'')}" onchange="updateProfileField('name',this.value)"></div>
       <div class="row" style="gap:10px">
-        <div class="field" style="flex:1"><label>Age</label><input type="number" value="${p.age}" onchange="updateProfileField('age',Number(this.value))"></div>
-        <div class="field" style="flex:1"><label>Height (cm)</label><input type="number" value="${p.heightCm}" onchange="updateProfileField('heightCm',Number(this.value))"></div>
+        <div class="field" style="flex:1"><label>Age</label><input type="number" value="${p.age ?? 25}" onchange="updateProfileField('age',Number(this.value))"></div>
+        <div class="field" style="flex:1"><label>Height (cm)</label><input type="number" value="${p.heightCm ?? 170}" onchange="updateProfileField('heightCm',Number(this.value))"></div>
       </div>
-      <div class="field"><label>Current weight (kg)</label><input type="number" value="${p.weightKg}" onchange="updateProfileField('weightKg',Number(this.value))"></div>
-      <div class="field"><label>Goal weight (kg)</label><input type="number" value="${p.goalWeightKg}" onchange="updateProfileField('goalWeightKg',Number(this.value))"></div>
+      <div class="field"><label>Current weight (kg)</label><input type="number" value="${p.weightKg ?? 70}" onchange="updateProfileField('weightKg',Number(this.value))"></div>
+      <div class="field"><label>Goal weight (kg)</label><input type="number" value="${p.goalWeightKg ?? p.weightKg ?? 70}" onchange="updateProfileField('goalWeightKg',Number(this.value))"></div>
     </div>
     <div class="card">
       <h3>Activity & goal</h3>
@@ -6064,33 +6161,39 @@ function renderProfileEdit(){
     </div>
     <div class="card">
       <h3>Daily targets <span class="muted small">(always overridable)</span></h3>
-      ${["calories","protein","carbs","fat","fibre"].map(k=>`<div class="field"><label>${k[0].toUpperCase()+k.slice(1)}${k==='calories'?' (kcal)':' (g)'}</label><input type="number" value="${p.targets[k]}" onchange="updateTargetField('${k}',Number(this.value))"></div>`).join("")}
+      ${["calories","protein","carbs","fat","fibre"].map(k=>`<div class="field"><label>${k[0].toUpperCase()+k.slice(1)}${k==='calories'?' (kcal)':' (g)'}</label><input type="number" value="${targets[k] ?? 0}" onchange="updateTargetField('${k}',Number(this.value))"></div>`).join("")}
     </div>
     <div class="card">
       <h3>Preferences</h3>
       <div class="field"><label>Diet type</label><div class="chip-row">${DIET_PREFS.map(d=>`<span class="chip ${p.diet===d?'active':''}" onclick="updateProfileField('diet','${d}')">${d}</span>`).join("")}</div></div>
-      <div class="field"><label>Allergies</label><div class="chip-row">${COMMON_ALLERGIES.map(a=>`<span class="chip ${p.allergies.includes(a)?'active':''}" onclick="toggleProfileAllergy('${a}')">${a}</span>`).join("")}</div></div>
-      <div class="field"><label>Dislikes</label><input type="text" value="${esc(p.dislikes)}" onchange="updateProfileField('dislikes',this.value)"></div>
+      <div class="field"><label>Allergies</label><div class="chip-row">${COMMON_ALLERGIES.map(a=>`<span class="chip ${allergies.includes(a)?'active':''}" onclick="toggleProfileAllergy('${a}')">${a}</span>`).join("")}</div></div>
+      <div class="field"><label>Dislikes</label><input type="text" value="${esc(p.dislikes||'')}" onchange="updateProfileField('dislikes',this.value)"></div>
       <div class="field"><label>Cuisine</label><select onchange="updateProfileField('cuisine',this.value)">${CUISINES.map(c=>`<option ${p.cuisine===c?'selected':''}>${c}</option>`).join("")}</select></div>
       <div class="field"><label>Budget</label><div class="choice-grid c3">${["budget","moderate","flexible"].map(b=>`<div class="choice ${p.budget===b?'active':''}" onclick="updateProfileField('budget','${b}')">${b}</div>`).join("")}</div></div>
     </div>
   </div>`;
 }
 async function updateProfileField(field, value){
+  if(!STATE.profile) STATE.profile = normalizeProfile({});
   STATE.profile[field]=value;
   await StorageService.updateDoc("profile/main", {[field]:value});
   render();
 }
 async function toggleProfileAllergy(a){
+  if(!STATE.profile) STATE.profile = normalizeProfile({});
+  if(!Array.isArray(STATE.profile.allergies)) STATE.profile.allergies = [];
   const arr = STATE.profile.allergies; const i=arr.indexOf(a); if(i>=0) arr.splice(i,1); else arr.push(a);
   await StorageService.updateDoc("profile/main", {allergies:arr}); render();
 }
 async function updateTargetField(k, v){
-  STATE.profile.targets[k]=v;
+  if(!STATE.profile) STATE.profile = normalizeProfile({});
+  if(!STATE.profile.targets) STATE.profile.targets = {calories:2000, protein:120, carbs:220, fat:65, fibre:30};
+  STATE.profile.targets[k]=Number(v)||0;
   await StorageService.updateDoc("profile/main", {targets:STATE.profile.targets}); render();
 }
 async function recalculateTargets(){
-  const p = STATE.profile;
+  const p = normalizeProfile(STATE.profile);
+  STATE.profile = p;
   const t = calcTargets({weightKg:p.weightKg, heightCm:p.heightCm, age:p.age, gender:p.gender, activityLevel:p.activityLevel, goal:p.goal});
   if(!t){ toast("Need age, height & weight first"); return; }
   p.targets = t;
@@ -6098,10 +6201,113 @@ async function recalculateTargets(){
   toast("Targets recalculated"); render();
 }
 /* ============================================================
+   PROFILE & ACCOUNT BOTTOM SHEET (Opened from "M" Avatar Logo)
+   ============================================================ */
+function openProfileSheet(){
+  openSheet("profileMenu", {});
+}
+
+function sheetProfileMenuContent(){
+  const p = normalizeProfile(STATE.profile) || {
+    name: "Mohit", targets: { calories: 2000, protein: 120, carbs: 220, fat: 65, fibre: 30 }, goal: "maintain"
+  };
+  const isGuest = isGuestUser();
+  const initial = (p.name || "M").slice(0, 1).toUpperCase();
+  const trialDays = getTrialDaysUsed() + 1;
+  const calTarget = (p.targets && p.targets.calories) || 2000;
+  const pTarget = (p.targets && p.targets.protein) || 120;
+  const curWeight = (p.weightKg != null) ? `${p.weightKg} kg` : "--";
+
+  return `<div class="sheet-handle"></div>
+    <div class="sheet-head" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="avatar" style="width:46px;height:46px;font-size:19px;box-shadow:0 4px 12px rgba(235,94,85,0.3);flex:none;cursor:default">${esc(initial)}</div>
+        <div style="text-align:left">
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;line-height:1.2">${esc(p.name || "Member")}</div>
+          <div style="font-size:12px;margin-top:2px">
+            ${isGuest ? `<span class="badge" style="background:rgba(46,125,50,0.12);color:var(--primary);font-weight:700">⚡ Guest Mode (Day ${trialDays}/7)</span>` : `<span class="badge" style="background:rgba(30,136,229,0.12);color:#1976d2;font-weight:700">✓ Logged In Cloud Account</span>`}
+          </div>
+        </div>
+      </div>
+      <button class="icon-btn" onclick="closeSheet()">${ICO.close}</button>
+    </div>
+
+    <!-- Quick Target Summary Card -->
+    <div class="card tight" style="background:var(--card-tint);border:1px solid var(--line);margin-bottom:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12.5px"><span class="muted">Daily Goal:</span> <b>${calTarget} kcal</b> · <b>${pTarget}g P</b> · <b>${curWeight}</b></div>
+      <span class="badge" style="font-size:11px;background:var(--card);border:1px solid var(--line);font-weight:700;text-transform:capitalize">${esc(p.goal || "maintain")}</span>
+    </div>
+
+    <!-- Action Navigation List -->
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <button class="card tight" style="cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;padding:12px 14px;border:1px solid var(--line);background:var(--card);transition:all .12s ease" onclick="closeSheet(); goTo('profile')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:34px;height:34px;border-radius:10px;background:rgba(235,94,85,0.12);color:var(--coral);display:flex;align-items:center;justify-content:center;font-size:16px;flex:none">🎯</div>
+          <div>
+            <div style="font-weight:700;font-size:13.5px">Profile & Nutrition Goals</div>
+            <div class="muted small" style="font-size:11px">Weight, height, calorie targets & diet preferences</div>
+          </div>
+        </div>
+        <span style="color:var(--ink-faint);font-weight:700;font-size:16px">›</span>
+      </button>
+
+      <button class="card tight" style="cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;padding:12px 14px;border:1px solid var(--line);background:var(--card);transition:all .12s ease" onclick="closeSheet(); goTo('settings')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:34px;height:34px;border-radius:10px;background:rgba(30,136,229,0.12);color:#1976d2;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none">⚙️</div>
+          <div>
+            <div style="font-weight:700;font-size:13.5px">App Settings & Appearance</div>
+            <div class="muted small" style="font-size:11px">Theme (Dark/Light), water goal, reminder alerts</div>
+          </div>
+        </div>
+        <span style="color:var(--ink-faint);font-weight:700;font-size:16px">›</span>
+      </button>
+
+      <button class="card tight" style="cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;padding:12px 14px;border:1px solid var(--line);background:var(--card);transition:all .12s ease" onclick="closeSheet(); goTo('analytics')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:34px;height:34px;border-radius:10px;background:rgba(76,175,80,0.12);color:#2e7d32;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none">📊</div>
+          <div>
+            <div style="font-weight:700;font-size:13.5px">Analytics & Trends</div>
+            <div class="muted small" style="font-size:11px">Weekly calorie compliance & macro distribution</div>
+          </div>
+        </div>
+        <span style="color:var(--ink-faint);font-weight:700;font-size:16px">›</span>
+      </button>
+
+      <button class="card tight" style="cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;padding:12px 14px;border:1px solid var(--line);background:var(--card);transition:all .12s ease" onclick="closeSheet(); goTo('notifications')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:34px;height:34px;border-radius:10px;background:rgba(255,152,0,0.12);color:#ef6c00;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none">🔔</div>
+          <div>
+            <div style="font-weight:700;font-size:13.5px">Notifications</div>
+            <div class="muted small" style="font-size:11px">Meal reminders and daily summary alerts</div>
+          </div>
+        </div>
+        <span style="color:var(--ink-faint);font-weight:700;font-size:16px">›</span>
+      </button>
+    </div>
+
+    <!-- Account Actions -->
+    <div>
+      ${isGuest ? `
+        <button class="btn btn-primary btn-block" style="font-weight:700;margin-bottom:8px" onclick="closeSheet(); openAuthModal('signup')">
+          ⚡ Create Free Cloud Account (Sync Data)
+        </button>
+        <button class="btn btn-ghost btn-block btn-sm" style="color:var(--ink-faint)" onclick="closeSheet(); openAuthModal('login')">
+          Already have an account? Log in
+        </button>
+      ` : `
+        <button class="btn btn-outline btn-block" style="color:var(--danger);border-color:rgba(229,57,53,0.3);font-weight:700" onclick="closeSheet(); logOut()">
+          Log out of account
+        </button>
+      `}
+    </div>`;
+}
+
+/* ============================================================
    SETTINGS
    ============================================================ */
 function renderSettings(){
-  const s = STATE.settings;
+  const s = STATE.settings || {};
+  const notifPrefs = s.notifPrefs || {mealReminders:true, hydration:true, loggingReminder:true, goalProgress:true, dailyReport:false, weeklyReport:false};
   const isGuest = isGuestUser();
   const trialDays = getTrialDaysUsed() + 1;
   return `<div class="screen screen-narrow">
@@ -6138,26 +6344,26 @@ function renderSettings(){
       <h3>Notifications</h3>
       ${NOTIF_TYPES.map(nt=>`<div class="row" style="padding:9px 0;border-bottom:1px solid var(--line)">
         <div><div style="font-weight:600;font-size:13.5px">${nt.label}</div><div class="muted small">${nt.desc}</div></div>
-        <label class="switch"><input type="checkbox" ${s.notifPrefs[nt.id]?'checked':''} onchange="toggleNotifPref('${nt.id}',this.checked)"><span class="track"></span><span class="thumb"></span></label>
+        <label class="switch"><input type="checkbox" ${notifPrefs[nt.id]?'checked':''} onchange="toggleNotifPref('${nt.id}',this.checked)"><span class="track"></span><span class="thumb"></span></label>
       </div>`).join("")}
-      <div class="field" style="margin-top:12px"><label>Daily report time</label><input type="time" value="${s.reportTime}" onchange="updateSettingField('reportTime',this.value)"></div>
+      <div class="field" style="margin-top:12px"><label>Daily report time</label><input type="time" value="${s.reportTime||'20:00'}" onchange="updateSettingField('reportTime',this.value)"></div>
       ${("Notification" in window) ? `<button class="btn btn-outline btn-block" style="margin-top:8px" onclick="requestBrowserNotifPermission()">${Notification.permission==='granted'?'Notifications enabled on this device':'Enable notifications on this device'}</button>
       <p class="disclaimer">The backend's own scheduler generates meal/hydration reminders and report-ready notifications on your configured time, independent of this tab being open — enabling this adds a native browser notification on top when they arrive while you have Nourish open.</p>` : ""}
     </div>
     <div class="card">
       <h3>Email reports</h3>
-      <div class="row"><span class="small">Daily email reports</span><label class="switch"><input type="checkbox" ${s.notifPrefs.dailyReport?'checked':''} onchange="toggleNotifPref('dailyReport',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
-      <div class="row"><span class="small">Weekly email reports</span><label class="switch"><input type="checkbox" ${s.notifPrefs.weeklyReport?'checked':''} onchange="toggleNotifPref('weeklyReport',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+      <div class="row"><span class="small">Daily email reports</span><label class="switch"><input type="checkbox" ${notifPrefs.dailyReport?'checked':''} onchange="toggleNotifPref('dailyReport',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+      <div class="row"><span class="small">Weekly email reports</span><label class="switch"><input type="checkbox" ${notifPrefs.weeklyReport?'checked':''} onchange="toggleNotifPref('weeklyReport',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
       <p class="disclaimer">When enabled, the server emails your report automatically at the time above (see EMAIL_PROVIDER in the backend's .env — it logs to the console until real SMTP credentials are set). Reports → Download always works regardless of this setting.</p>
     </div>
     <div class="card">
       <h3>Appearance & units</h3>
-      <div class="field"><label>Theme</label><div class="choice-grid c3">${["system","light","dark"].map(th=>`<div class="choice ${s.appearance===th?'active':''}" onclick="setAppearance('${th}')">${th}</div>`).join("")}</div></div>
-      <div class="field"><label>Units</label><div class="choice-grid">${["metric","imperial"].map(u=>`<div class="choice ${s.units===u?'active':''}" onclick="updateSettingField('units','${u}')">${u==='metric'?'Metric':'Imperial'}</div>`).join("")}</div></div>
+      <div class="field"><label>Theme</label><div class="choice-grid c3">${["system","light","dark"].map(th=>`<div class="choice ${(s.appearance||'system')===th?'active':''}" onclick="setAppearance('${th}')">${th}</div>`).join("")}</div></div>
+      <div class="field"><label>Units</label><div class="choice-grid">${["metric","imperial"].map(u=>`<div class="choice ${(s.units||'metric')===u?'active':''}" onclick="updateSettingField('units','${u}')">${u==='metric'?'Metric':'Imperial'}</div>`).join("")}</div></div>
     </div>
     <div class="card">
       <h3>AI preferences</h3>
-      <div class="row"><span class="small">Enable AI features</span><label class="switch"><input type="checkbox" ${s.aiEnabled?'checked':''} onchange="updateSettingField('aiEnabled',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+      <div class="row"><span class="small">Enable AI features</span><label class="switch"><input type="checkbox" ${s.aiEnabled!==false?'checked':''} onchange="updateSettingField('aiEnabled',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
       <p class="disclaimer">Covers AI photo recognition, label scanning, voice parsing, recommendations, and the assistant. Manual logging always works without AI. Requires ANTHROPIC_API_KEY to be set on the server either way.</p>
     </div>
     <div class="card">
@@ -6300,7 +6506,17 @@ async function deleteAllData(){
    ============================================================ */
 function openWhatToEat(){
   const defaultCuisine = (STATE.profile && STATE.profile.cuisine) || "Indian";
-  STATE.eat = {mode:"now", status:"loading", cuisine:defaultCuisine, options:[], plan:null, error:null};
+  const ctx = buildEatContext();
+  const localOpts = generateLocalMealSuggestions(ctx);
+  STATE.eat = {
+    mode: "now",
+    status: (localOpts && localOpts.length > 0) ? "results" : "loading",
+    cuisine: defaultCuisine,
+    options: (localOpts && localOpts.length > 0) ? localOpts : [],
+    isRefreshingAi: true,
+    plan: null,
+    error: null
+  };
   openSheet("whatToEat", {});
   fetchEatNow();
 }
@@ -6339,7 +6555,13 @@ function sheetWhatToEatContent(){
   const e = STATE.eat;
   const curCuisine = (e && e.cuisine) || "Indian";
   return `<div class="sheet-handle"></div>
-    <div class="sheet-head"><h3>${ICO.sparkle} What should I eat?</h3><button class="icon-btn" onclick="closeSheet()">${ICO.close}</button></div>
+    <div class="sheet-head">
+      <div style="display:flex;align-items:center;gap:8px">
+        <h3 style="margin:0">${ICO.sparkle} What should I eat?</h3>
+        ${(e && e.isRefreshingAi) ? `<span class="badge" style="background:rgba(235,94,85,0.12);color:var(--coral);font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:12px;display:inline-flex;align-items:center;gap:3px">✨ AI checking…</span>` : ''}
+      </div>
+      <button class="icon-btn" onclick="closeSheet()">${ICO.close}</button>
+    </div>
     <div style="margin-bottom:10px">
       <div class="muted small" style="font-weight:700;font-size:11px;margin-bottom:6px;letter-spacing:0.3px;text-transform:uppercase">Cuisine Style:</div>
       <div class="chip-row" style="flex-wrap:wrap;gap:6px">
@@ -6351,7 +6573,7 @@ function sheetWhatToEatContent(){
     </div>
     <div class="segmented" style="margin-bottom:12px">
       <button class="${e.mode==='now'?'active':''}" onclick="STATE.eat.mode='now'; refreshSheet()">Right now</button>
-      <button class="${e.mode==='plan'?'active':''}" onclick="STATE.eat.mode='plan'; refreshSheet()">Plan tomorrow</button>
+      <button class="${e.mode==='plan'?'active':''}" onclick="STATE.eat.mode='plan'; if(!STATE.eat.plan){ fetchEatPlan(); } else { refreshSheet(); }">Plan tomorrow</button>
     </div>
     ${e.mode==='now' ? renderEatNow() : renderEatPlan()}`;
 }
@@ -6647,27 +6869,38 @@ function generateLocalDayPlan(ctx){
 }
 
 async function fetchEatNow(){
-  STATE.eat.status="loading"; refreshSheet();
   const ctx = buildEatContext();
+  if(!STATE.eat || !STATE.eat.options || STATE.eat.options.length === 0){
+    STATE.eat = STATE.eat || {};
+    STATE.eat.status = "loading";
+    refreshSheet();
+  } else {
+    STATE.eat.isRefreshingAi = true;
+    refreshSheet();
+  }
   try{
     const res = await RecommendationService.whatToEatNow(ctx);
     if(res && res.ok && res.data && Array.isArray(res.data.options) && res.data.options.length > 0){
       STATE.eat.options = res.data.options;
       STATE.eat.status = "results";
+      STATE.eat.isRefreshingAi = false;
       refreshSheet();
       return;
     }
   }catch(err){
     console.warn("AI recommendation error, using local engine:", err);
   }
-  const localOpts = generateLocalMealSuggestions(ctx);
-  if(localOpts && localOpts.length > 0){
-    STATE.eat.options = localOpts;
-    STATE.eat.status = "results";
-  } else {
-    STATE.eat.status = "error";
-    STATE.eat.error = "Could not load meal suggestions. Please try again.";
+  if(!STATE.eat.options || STATE.eat.options.length === 0){
+    const localOpts = generateLocalMealSuggestions(ctx);
+    if(localOpts && localOpts.length > 0){
+      STATE.eat.options = localOpts;
+      STATE.eat.status = "results";
+    } else {
+      STATE.eat.status = "error";
+      STATE.eat.error = "Could not load meal suggestions. Please try again.";
+    }
   }
+  STATE.eat.isRefreshingAi = false;
   refreshSheet();
 }
 
@@ -7533,6 +7766,7 @@ function renderSheetContent(){
     quickAdd: sheetQuickAddContent,
     shareCard: sheetShareCardContent,
     calendar: sheetCalendarContent,
+    profileMenu: sheetProfileMenuContent,
   };
   const fn = fns[sh.type];
   return fn ? fn(sh.props) : "";
@@ -7825,15 +8059,15 @@ async function submitAuth(){
 }
 
 async function loadEverythingGuest(){
-  STATE.profile = LocalFallback.store["profile/main"] || null;
-  STATE.settings = LocalFallback.store["settings/main"] || {
+  STATE.profile = normalizeProfile(LocalFallback.store["profile/main"] || null);
+  STATE.settings = Object.assign({
     reportTime: "20:00",
     units: "metric",
     appearance: "system",
     aiEnabled: true,
     waterGoalMl: 2500,
     notifPrefs: {mealReminders:true, hydration:true, loggingReminder:true, goalProgress:true, dailyReport:false, weeklyReport:false}
-  };
+  }, LocalFallback.store["settings/main"] || {});
   if(STATE.settings && STATE.settings.appearance && STATE.settings.appearance!=="system"){
     document.documentElement.setAttribute("data-theme", STATE.settings.appearance);
   }
@@ -7851,14 +8085,24 @@ async function loadEverythingGuest(){
       .filter(k=>k.startsWith("recipes/"))
       .map(k=>LocalFallback.store[k]);
     await loadCustomFoods();
+    await loadNotifications();
     await refreshAllMealsCache();
   }
   STATE.authLoading = false;
 }
 
 async function loadEverythingAfterAuth(){
-  STATE.profile = await StorageService.getDoc("profile/main");
-  STATE.settings = await StorageService.getDoc("settings/main");
+  const profDoc = await StorageService.getDoc("profile/main");
+  STATE.profile = normalizeProfile(profDoc);
+  const settingsDoc = await StorageService.getDoc("settings/main");
+  STATE.settings = Object.assign({
+    reportTime: "20:00",
+    units: "metric",
+    appearance: "system",
+    aiEnabled: true,
+    waterGoalMl: 2000,
+    notifPrefs: {mealReminders:true, hydration:true, loggingReminder:true, goalProgress:true, dailyReport:true, weeklyReport:true}
+  }, settingsDoc || {});
   if(STATE.settings && STATE.settings.appearance && STATE.settings.appearance!=="system"){
     document.documentElement.setAttribute("data-theme", STATE.settings.appearance);
   }

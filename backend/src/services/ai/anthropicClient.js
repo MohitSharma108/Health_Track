@@ -1,4 +1,8 @@
 'use strict';
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') });
+require('dotenv').config();
 const https = require('https');
 const Anthropic = require('@anthropic-ai/sdk');
 const { ApiError } = require('../../middleware/errorHandler');
