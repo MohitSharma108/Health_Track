@@ -16,9 +16,10 @@ backend/data/*.json
 uploads/
 backend/uploads/
 
-# Logs
+# Logs & Archives
 *.log
 npm-debug.log*
+*.zip
 
 # OS & Editor files
 .DS_Store

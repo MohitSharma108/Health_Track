@@ -470,6 +470,400 @@ input:focus-visible, button:focus-visible, .choice:focus-visible, .chip:focus-vi
 .more-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .analytics-grid{ display:grid; grid-template-columns:1fr; gap:12px; }
 
+/* ============================================================
+   AUTH SCREEN — Modern Health App Login & Registration
+   ============================================================ */
+.auth-wrapper {
+  min-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 16px 40px;
+  position: relative;
+  width: 100%;
+}
+.auth-ambient-glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 600px;
+  height: 420px;
+  background: radial-gradient(circle at 50% 15%, rgba(62, 122, 84, 0.14) 0%, rgba(229, 87, 63, 0.08) 50%, transparent 72%);
+  pointer-events: none;
+  z-index: 0;
+}
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  padding: 34px 28px;
+  box-shadow: 0 16px 48px rgba(33, 29, 26, 0.08), 0 2px 8px rgba(33, 29, 26, 0.04);
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: authCardIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes authCardIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.auth-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+.auth-close-btn:hover {
+  background: var(--card-tint);
+  color: var(--ink);
+  transform: scale(1.05);
+}
+.auth-brand-badge {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #3E7A54 0%, #2E5D40 55%, #E5573F 130%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(62, 122, 84, 0.28);
+  color: #fff;
+  transition: transform 0.2s ease;
+}
+.auth-brand-badge:hover {
+  transform: scale(1.05) rotate(2deg);
+}
+.auth-brand-badge svg {
+  width: 26px !important;
+  height: 26px !important;
+  stroke: #ffffff !important;
+  stroke-width: 2.3 !important;
+}
+.auth-brand-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0 0 4px;
+  line-height: 1.15;
+}
+.auth-brand-title .brand-dot {
+  color: var(--coral);
+}
+.auth-brand-sub {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 0 auto 20px;
+  line-height: 1.45;
+  max-width: 320px;
+}
+.auth-tabs-toggle {
+  display: flex;
+  background: var(--card-tint);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  margin-bottom: 22px;
+  gap: 4px;
+}
+.auth-tab-btn {
+  flex: 1;
+  padding: 9px 14px;
+  border-radius: var(--radius-pill);
+  border: none;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink-faint);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.auth-tab-btn.active {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.auth-tab-btn:hover:not(.active) {
+  color: var(--ink);
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  text-align: left;
+}
+.auth-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.auth-field-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.auth-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0;
+}
+.auth-forgot-link {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--coral);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+.auth-forgot-link:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+.auth-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 14px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.auth-input-wrapper:focus-within {
+  border-color: var(--leaf);
+  background: var(--card);
+  box-shadow: 0 0 0 3.5px rgba(62, 122, 84, 0.12);
+}
+.auth-input-icon {
+  position: absolute;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: color 0.15s ease;
+}
+.auth-input-wrapper:focus-within .auth-input-icon {
+  color: var(--leaf);
+}
+.auth-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 42px 0 42px;
+  border: none;
+  background: transparent;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--ink);
+  outline: none;
+  box-sizing: border-box;
+}
+.auth-input::placeholder {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+.auth-pw-toggle {
+  position: absolute;
+  right: 6px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-faint);
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+  transition: color 0.15s ease, background 0.15s ease;
+  touch-action: manipulation;
+}
+.auth-pw-toggle:hover {
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.04);
+}
+.auth-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(192, 57, 43, 0.08);
+  border-left: 3.5px solid var(--danger);
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+  animation: shakeAlert 0.28s ease;
+}
+@keyframes shakeAlert {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.auth-error-banner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.auth-submit-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: linear-gradient(135deg, var(--coral) 0%, #D4422B 100%);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(229, 87, 63, 0.28);
+  transition: transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  touch-action: manipulation;
+  margin-top: 4px;
+}
+.auth-submit-btn:hover {
+  box-shadow: 0 8px 24px rgba(229, 87, 63, 0.36);
+  transform: translateY(-1px);
+}
+.auth-submit-btn:active {
+  transform: scale(0.985);
+  box-shadow: 0 2px 8px rgba(229, 87, 63, 0.2);
+}
+.auth-submit-btn:disabled, .auth-submit-btn.loading {
+  opacity: 0.8;
+  cursor: wait;
+  transform: none;
+}
+.auth-spinner-ring {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2.2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.auth-trust-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  font-weight: 500;
+  flex-wrap: wrap;
+}
+.auth-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.auth-trust-item svg {
+  width: 13px !important;
+  height: 13px !important;
+  stroke: var(--leaf) !important;
+  flex-shrink: 0;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 14px;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.auth-divider::before, .auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.auth-guest-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+.auth-guest-btn:hover {
+  background: var(--card-tint);
+  border-color: var(--ink-faint);
+}
+.auth-guest-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(62, 122, 84, 0.12);
+  color: var(--leaf);
+}
+.auth-footer-help {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+.auth-footer-help a {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* TABLET BREAKPOINT (768px - 1023px) */
 @media (min-width: 768px){
   #app{ max-width:840px; padding-bottom:96px; }
@@ -7812,34 +8206,8 @@ function setAuthTab(mode){
   render();
 }
 
-async function showForgotPasswordPrompt(){
-  const emailEl = document.getElementById("auth-email");
-  const currentEmail = (emailEl && emailEl.value) || (STATE.authForm && STATE.authForm.email) || "";
-  const targetEmail = prompt("Enter your account email address:", currentEmail);
-  if(!targetEmail) return;
-  const newPass = prompt("Enter a new password for your account (minimum 4 characters):");
-  if(!newPass || newPass.trim().length < 4){
-    toast("Password must be at least 4 characters.");
-    return;
-  }
-  try{
-    STATE.authLoading = true;
-    STATE.authError = null;
-    render();
-    const res = await apiPost("/auth/reset-password", { email: targetEmail.trim().toLowerCase(), newPassword: newPass.trim() });
-    setAuthToken(res.token);
-    STATE.auth = {loggedOut:false};
-    STATE.showAuthModal = false;
-    STATE.guestModeDismissed = true;
-    STATE.authForm = {email:"", password:"", name:""};
-    await loadEverythingAfterAuth().catch(e=>console.warn("loadEverythingAfterAuth warning:", e));
-    toast("✨ Password updated! Logged in successfully.");
-  }catch(err){
-    STATE.authError = (err && err.message) || "Could not reset password. Please check your network and try again.";
-  }finally{
-    STATE.authLoading = false;
-    render();
-  }
+function showForgotPasswordPrompt(){
+  setAuthTab('forgot');
 }
 
 function togglePasswordVisibility(){
@@ -7848,109 +8216,165 @@ function togglePasswordVisibility(){
   if(!pwInput) return;
   if(pwInput.type === "password"){
     pwInput.type = "text";
-    if(icon) icon.textContent = "🙈";
+    if(icon) {
+      icon.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+    }
   } else {
     pwInput.type = "password";
-    if(icon) icon.textContent = "👁️";
+    if(icon) {
+      icon.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    }
   }
 }
 window.togglePasswordVisibility = togglePasswordVisibility;
 
 function renderAuthScreen(){
-  const mode = STATE.authMode||"login";
-  const f = STATE.authForm||(STATE.authForm={email:"",password:"",name:""});
-  const expired = isTrialExpired();
-  let title = mode==='login' ? 'Welcome Back!' : 'Save & Sync Progress';
-  let subtitle = mode==='login'
-    ? 'Log in to access your cloud meal logs and daily goals.'
-    : (expired ? '7-Day Free Pass complete! Create your account to keep your streak.' : 'Create your free account to sync your 7-day trial data to the cloud.');
+  const mode = STATE.authMode || "login";
+  const f = STATE.authForm || (STATE.authForm = { email: "", password: "", name: "" });
+  const isLogin = mode === "login";
+  const isForgot = mode === "forgot";
+  const canDismiss = STATE.showAuthModal || !isTrialExpired();
 
-  return `<div class="screen" style="padding-top:3vh;padding-bottom:40px;max-width:400px;margin:0 auto">
+  return `<div class="auth-wrapper">
+    <div class="auth-ambient-glow"></div>
     
-    <!-- Elevated Card Container -->
-    <div class="card" style="border-radius:24px;padding:26px 20px;box-shadow:0 8px 30px rgba(0,0,0,0.06);border:1px solid var(--line);background:var(--card);text-align:center">
+    <div class="auth-card">
+      ${canDismiss ? `
+        <button type="button" class="auth-close-btn" onclick="dismissAuthModal()" title="Close and return to app" aria-label="Close">
+          ${ICO.close}
+        </button>
+      ` : ''}
+
+      <!-- Brand Emblem -->
+      <div class="auth-brand-badge" title="Nourish">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 20A7 7 0 0 1 4 13C4 8.5 8 4 13 3c4.5 0 8 3.5 8 8 0 5-4.5 9-10 9z"/>
+          <path d="M11 20v-7"/>
+          <path d="M11 13l4-4"/>
+        </svg>
+      </div>
       
-      <!-- Brand Icon & Header -->
-      <div style="width:48px;height:48px;margin:0 auto 10px;border-radius:16px;background:var(--coral-soft);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(229,87,63,0.15);font-size:24px">
-        🥗
-      </div>
-      <h1 style="font-family:var(--font-display);font-size:23px;font-weight:700;margin:0 0 5px;color:var(--ink);letter-spacing:-0.02em">${title}</h1>
-      <p class="muted small" style="margin:0 auto 20px;max-width:300px;line-height:1.45;color:var(--ink-soft)">${subtitle}</p>
+      <!-- Brand Title & Tagline -->
+      <h1 class="auth-brand-title">Nourish<span class="brand-dot">.</span></h1>
+      <p class="auth-brand-sub">${isForgot ? 'Enter your registered email and a new password to recover access.' : (isLogin ? 'Sign in to access your cloud meal logs, macros and daily goals.' : 'Create your free account to sync your meal logs and streak to the cloud.')}</p>
 
-      <!-- Segmented Tab: Log In vs Create Account -->
-      <div class="segmented" style="margin:0 auto 20px;background:var(--card-tint);border:1px solid var(--line);border-radius:var(--radius-pill);padding:4px;display:flex;gap:4px">
-        <button type="button" class="${mode==='login'?'active':''}" style="flex:1;padding:10px 14px;border-radius:var(--radius-pill);border:none;font-weight:700;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease;${mode==='login'?'background:var(--card);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,0.08)':'background:transparent;color:var(--ink-soft)'}" onclick="setAuthTab('login')">
-          <span>🔐</span><span>Log In</span>
-        </button>
-        <button type="button" class="${mode==='register'?'active':''}" style="flex:1;padding:10px 14px;border-radius:var(--radius-pill);border:none;font-weight:700;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease;${mode==='register'?'background:var(--card);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,0.08)':'background:transparent;color:var(--ink-soft)'}" onclick="setAuthTab('register')">
-          <span>✨</span><span>Create Account</span>
-        </button>
-      </div>
+      <!-- Segmented Tab Switcher or Forgot Password Header -->
+      ${isForgot ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding:9px 14px;background:rgba(229,87,63,0.08);border:1px solid rgba(229,87,63,0.22);border-radius:var(--radius-lg);font-size:12.5px">
+          <div style="display:flex;align-items:center;gap:7px;font-weight:600;color:var(--coral)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Password Recovery</span>
+          </div>
+          <button type="button" style="background:none;border:none;color:var(--ink);cursor:pointer;font-size:12px;font-weight:600;text-decoration:underline;padding:2px 4px" onclick="setAuthTab('login')">
+            ← Back to Sign In
+          </button>
+        </div>
+      ` : `
+        <div class="auth-tabs-toggle" role="tablist">
+          <button type="button" class="auth-tab-btn ${isLogin ? 'active' : ''}" onclick="setAuthTab('login')" role="tab" aria-selected="${isLogin}">
+            <span>Sign In</span>
+          </button>
+          <button type="button" class="auth-tab-btn ${mode === 'register' ? 'active' : ''}" onclick="setAuthTab('register')" role="tab" aria-selected="${mode === 'register'}">
+            <span>Create Account</span>
+          </button>
+        </div>
+      `}
 
-      <form id="auth-form" onsubmit="event.preventDefault(); submitAuth();" style="text-align:left;display:flex;flex-direction:column;gap:13px">
-        ${mode==='register'?`
-          <div class="field" style="margin-bottom:0">
-            <label for="auth-name" style="font-weight:600;font-size:12.5px;color:var(--ink-soft)">Your Name (optional)</label>
-            <div style="position:relative;display:flex;align-items:center">
-              <span style="position:absolute;left:14px;color:var(--ink-faint);font-size:15px;pointer-events:none">👤</span>
-              <input type="text" id="auth-name" autocomplete="name" placeholder="Enter your name" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value" style="padding-left:42px">
+      <!-- Form -->
+      <form id="auth-form" onsubmit="event.preventDefault(); submitAuth();" class="auth-form">
+        ${mode === 'register' ? `
+          <div class="auth-field-group">
+            <div class="auth-field-head">
+              <label for="auth-name" class="auth-label">Your Name</label>
+              <span class="muted small" style="font-size:11px">Optional</span>
+            </div>
+            <div class="auth-input-wrapper">
+              <span class="auth-input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="7" r="4"/><path d="M5 21v-2a6 6 0 0 1 12 0v2"/>
+                </svg>
+              </span>
+              <input type="text" id="auth-name" class="auth-input" autocomplete="name" placeholder="Mohit Sharma" value="${esc(f.name)}" oninput="STATE.authForm.name=this.value">
             </div>
           </div>
-        `:""}
+        ` : ''}
 
-        <div class="field" style="margin-bottom:0">
-          <label for="auth-email" style="font-weight:600;font-size:12.5px;color:var(--ink-soft)">Email Address</label>
-          <div style="position:relative;display:flex;align-items:center">
-            <span style="position:absolute;left:14px;color:var(--ink-faint);font-size:15px;pointer-events:none">✉️</span>
-            <input type="email" id="auth-email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value" style="padding-left:42px">
+        <div class="auth-field-group">
+          <div class="auth-field-head">
+            <label for="auth-email" class="auth-label">Email Address</label>
+          </div>
+          <div class="auth-input-wrapper">
+            <span class="auth-input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="14" rx="3"/><polyline points="3,7 12,13 21,7"/>
+              </svg>
+            </span>
+            <input type="email" id="auth-email" class="auth-input" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com" value="${esc(f.email)}" oninput="STATE.authForm.email=this.value" required>
           </div>
         </div>
 
-        <div class="field" style="margin-bottom:0">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
-            <label for="auth-password" style="font-weight:600;font-size:12.5px;color:var(--ink-soft)">Password</label>
-            ${mode==='login'?`<button type="button" class="link-btn" style="font-size:12px;color:var(--coral);font-weight:600;padding:2px 4px;min-height:auto" onclick="showForgotPasswordPrompt()">Forgot password?</button>`:''}
+        <div class="auth-field-group">
+          <div class="auth-field-head">
+            <label for="auth-password" class="auth-label">${isForgot ? 'New Password' : (isLogin ? 'Password' : 'Create Password')}</label>
+            ${isLogin ? `<button type="button" class="auth-forgot-link" onclick="showForgotPasswordPrompt()">Forgot password?</button>` : ''}
           </div>
-          <div style="position:relative;display:flex;align-items:center">
-            <span style="position:absolute;left:14px;color:var(--ink-faint);font-size:15px;pointer-events:none">🔒</span>
-            <input type="password" id="auth-password" autocomplete="${mode==='login'?'current-password':'new-password'}" placeholder="••••••••" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value" style="padding-left:42px;padding-right:44px">
-            <button type="button" onclick="togglePasswordVisibility()" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;padding:8px;font-size:16px;color:var(--ink-faint);touch-action:manipulation" title="Show/Hide Password" aria-label="Toggle password visibility">
-              <span id="pw-eye-icon">👁️</span>
+          <div class="auth-input-wrapper">
+            <span class="auth-input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="11" width="16" height="10" rx="3"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            <input type="password" id="auth-password" class="auth-input" autocomplete="${isLogin ? 'current-password' : 'new-password'}" placeholder="${isLogin ? '••••••••' : 'Min 4 characters'}" value="${esc(f.password)}" oninput="STATE.authForm.password=this.value" required>
+            <button type="button" class="auth-pw-toggle" onclick="togglePasswordVisibility()" title="Show/Hide Password" aria-label="Toggle password visibility">
+              <span id="pw-eye-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              </span>
             </button>
           </div>
         </div>
 
-        ${STATE.authError?`
-          <div class="error-box" style="margin-top:2px;display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:var(--radius-md)">
-            <span>⚠️</span>
+        ${STATE.authError ? `
+          <div class="auth-error-banner" role="alert">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
             <span>${esc(STATE.authError)}</span>
           </div>
-        `:""}
+        ` : ''}
 
-        <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-block" style="cursor:pointer;pointer-events:auto;position:relative;z-index:20;margin-top:4px;padding:14px;font-size:15.5px;font-weight:700;box-shadow:0 4px 16px rgba(229,87,63,0.28);border-radius:var(--radius-pill);touch-action:manipulation;${STATE.authLoading?'opacity:0.8;cursor:wait':''}">
-          ${STATE.authLoading ? '⏳ Connecting to server…' : (mode==='login' ? '🔐 Log In & Access Data' : '✨ Create Free Account & Sync')}
+        <button type="submit" id="auth-submit-btn" class="auth-submit-btn ${STATE.authLoading ? 'loading' : ''}" ${STATE.authLoading ? 'disabled' : ''}>
+          ${STATE.authLoading
+            ? `<span class="auth-spinner-ring"></span><span>${isForgot ? 'Updating password…' : (isLogin ? 'Signing in…' : 'Creating account…')}</span>`
+            : `<span>${isForgot ? 'Reset Password & Sign In' : (isLogin ? 'Sign In to Account' : 'Create Free Account')}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`}
         </button>
 
-        <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;font-size:11.5px;color:var(--ink-faint)">
-          <span>🛡️</span>
-          <span>Encrypted session • Fast automatic cloud sync</span>
+        <!-- Trust Badges -->
+        <div class="auth-trust-row">
+          <span class="auth-trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Encrypted cloud session</span>
+          </span>
+          <span>•</span>
+          <span class="auth-trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>
+            <span>Instant sync</span>
+          </span>
         </div>
       </form>
-    </div>
-    
-    <!-- Guest Mode and Force Refresh Links -->
-    <div style="text-align:center;margin-top:14px">
-      <button type="button" class="btn btn-ghost btn-block" style="font-weight:600;font-size:13.5px;color:var(--ink);padding:11px 16px;background:var(--paper);border:1.5px solid var(--line);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px" onclick="dismissAuthModal()">
-        <span>← Continue to Log Meals & History</span>
-        <span class="pill" style="font-size:11px;padding:2px 8px;background:rgba(46,125,50,0.12);color:var(--leaf);border:1px solid rgba(46,125,50,0.25);font-weight:700">Guest</span>
+
+      <!-- Guest Exploration -->
+      <div class="auth-divider"><span>or</span></div>
+      <button type="button" class="auth-guest-btn" onclick="dismissAuthModal()">
+        <span>Continue without account</span>
+        <span class="auth-guest-pill">Guest Mode</span>
       </button>
 
-      <button type="button" class="link-btn" style="font-size:12px;color:var(--ink-faint);cursor:pointer;padding:4px 8px;text-decoration:underline" onclick="forceAppRefresh()">
-        🔄 Clear App Cache & Force Refresh
-      </button>
+      <div class="auth-footer-help">
+        Need to refresh? <a onclick="forceAppRefresh()">Clear cache & reload</a>
+      </div>
     </div>
-
-    ${!RUNTIME.apiUp?`<div class="error-box" style="margin-top:16px">Can't reach the Nourish server at ${esc(API_BASE)}. Make sure the backend is running, then reload.</div>`:""}
   </div>`;
 }
 
@@ -8020,16 +8444,34 @@ async function submitAuth(){
     return;
   }
 
+  const mode = STATE.authMode || "login";
+  if(mode === 'forgot' && cleanPassword.length < 4){
+    STATE.authError = "New password must be at least 4 characters.";
+    render();
+    return;
+  }
+
   STATE.authLoading = true;
   STATE.authError = null;
   render();
 
-  const mode = STATE.authMode || "login";
-  const body = mode === 'login'
-    ? { email: cleanEmail, password: cleanPassword }
-    : { email: cleanEmail, password: cleanPassword, name: cleanName };
-
   try{
+    if(mode === 'forgot'){
+      const res = await apiPost('/auth/reset-password', { email: cleanEmail, newPassword: cleanPassword });
+      setAuthToken(res.token);
+      STATE.auth = {loggedOut:false};
+      STATE.showAuthModal = false;
+      STATE.guestModeDismissed = true;
+      STATE.authForm = {email:"", password:"", name:""};
+      await loadEverythingAfterAuth().catch(e=>console.warn("loadEverythingAfterAuth warning:", e));
+      toast("✨ Password reset successfully! You are logged in.");
+      return;
+    }
+
+    const body = mode === 'login'
+      ? { email: cleanEmail, password: cleanPassword }
+      : { email: cleanEmail, password: cleanPassword, name: cleanName };
+
     const res = await apiPost(`/auth/${mode}`, body);
     setAuthToken(res.token);
     STATE.auth = {loggedOut:false};
