@@ -8,7 +8,12 @@
     "dev": "cd backend && npm run dev",
     "dev:client": "cd client && npm run dev",
     "build:client": "cd client && npm run build",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev",
     "postinstall": "cd backend && npm install"
+  },
+  "devDependencies": {
+    "wrangler": "^3.109.0"
   },
   "keywords": [
     "nutrition",
